@@ -289,6 +289,11 @@ function pushHistory(item){
   save();
 }
 
+// Force les valeurs par défaut si elles sont vides (ex: ancienne sauvegarde vide en localStorage)
+if(!state.proxy) state.proxy = 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run';
+if(!state.youtubeApiKey) state.youtubeApiKey = 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik';
+save();
+
 /* ===================== NAV ===================== */
 const titles = {home:'Accueil', youtube:'YouTube', molotov:'Molotov TV', iptv:'IPTV', sources:'Mes sources'};
 document.querySelectorAll('.nav-item').forEach(el=>{
