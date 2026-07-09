@@ -194,6 +194,23 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:20px;padding:8px 16px;width:260px;
 }
 .search-bar input{background:transparent;border:none;color:var(--text);font-size:13px;width:100%;outline:none;}
+
+/* ===== Lecteur intégré (plein écran dans la zone de contenu) ===== */
+.player-page{display:flex;flex-direction:column;height:100%;}
+.player-stage{
+  flex:1;background:#000;border-radius:14px;overflow:hidden;position:relative;
+  display:flex;align-items:center;justify-content:center;min-height:0;
+}
+.player-stage video, .player-stage iframe{width:100%;height:100%;border:none;background:#000;}
+.player-info{padding:18px 4px 6px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.player-info h2{font-size:18px;font-weight:600;}
+.player-info .sub{color:var(--muted);font-size:13px;margin-top:2px;}
+.player-back{
+  background:var(--surface2);border:none;color:var(--text);padding:10px 18px;border-radius:8px;
+  cursor:pointer;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;flex-shrink:0;margin-right:16px;
+}
+.player-back:hover{background:#232b37;}
+.player-status-line{color:var(--muted);font-size:12px;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -235,17 +252,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   </div>
 </div>
 
-<div class="player-overlay" id="playerOverlay">
-  <div class="player-box">
-    <div class="player-head">
-      <h3 id="playerTitle">Lecture</h3>
-      <button class="close-btn" id="closePlayer">✕</button>
-    </div>
-    <video id="videoPlayer" controls autoplay style="display:none;"></video>
-    <iframe id="framePlayer" style="display:none;" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-    <div class="player-status" id="playerStatus"></div>
-  </div>
-</div>
+
 
 <script>
 /* ===================== STORAGE ===================== */
@@ -261,6 +268,7 @@ let state = {
   history: DB.get('history', []),
   proxy: DB.get('proxy', ''),
   googleClientId: DB.get('googleClientId', '654265541879-4f8mb6u2m507aiju0iu87r9dh5p8s8dr.apps.googleusercontent.com'),
+  youtubeApiKey: DB.get('youtubeApiKey', ''),
   subscriptions: [],
   view: 'home',
 };
@@ -273,6 +281,7 @@ function save(){
   DB.set('history', state.history);
   DB.set('proxy', state.proxy);
   DB.set('googleClientId', state.googleClientId);
+  DB.set('youtubeApiKey', state.youtubeApiKey);
 }
 function pushHistory(item){
   state.history.unshift({...item, ts:Date.now()});
@@ -368,7 +377,7 @@ function extractYouTubeId(input){
 }
 let gAccessToken = null;
 let gTokenClient = null;
-let ytChannelView = null; // {channelId, title} when drilled into a channel
+let ytChannelView = null; // {channelId, title, videos} when drilled into a subscribed channel
 
 function ensureGoogleAuth(){
   if(!state.googleClientId){ alert('Configure ton Client ID Google dans Sources.'); switchView('sources'); return false; }
@@ -405,14 +414,14 @@ async function fetchSubscriptions(){
       thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url
     }));
     ytChannelView = null;
-    renderYoutube();
+    renderYoutube(); attachFocusNav();
   }catch(e){
     if(statusEl) statusEl.textContent = "Échec : "+e.message;
   }
 }
 async function openChannelUploads(channelId, title){
-  const grid = document.getElementById('ytGrid');
-  if(grid) grid.innerHTML = '<div class="empty">Chargement des vidéos...</div>';
+  ytChannelView = {channelId, title, videos: null};
+  renderYoutube(); attachFocusNav();
   try{
     const chRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}`, {
       headers:{ 'Authorization': 'Bearer '+gAccessToken }
@@ -430,9 +439,39 @@ async function openChannelUploads(channelId, title){
       thumb: it.snippet.thumbnails?.medium?.url
     }));
     ytChannelView = {channelId, title, videos};
-    renderYoutube();
+    renderYoutube(); attachFocusNav();
   }catch(e){
-    if(grid) grid.innerHTML = `<div class="empty">Erreur : ${e.message}</div>`;
+    ytChannelView = {channelId, title, videos: [], error: e.message};
+    renderYoutube(); attachFocusNav();
+  }
+}
+
+async function searchYouTube(query){
+  const key = state.youtubeApiKey;
+  if(!key){ alert('Configure ta clé API YouTube dans Sources.'); switchView('sources'); return; }
+  const resultsEl = document.getElementById('ytSearchResults');
+  resultsEl.innerHTML = '<div class="empty">Recherche en cours...</div>';
+  try{
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=16&q=${encodeURIComponent(query)}&key=${key}`);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const videos = (data.items||[]).map(it=>({
+      id: it.id.videoId, title: it.snippet.title, channel: it.snippet.channelTitle,
+      thumb: it.snippet.thumbnails?.medium?.url
+    }));
+    resultsEl.innerHTML = videos.length ? videos.map((v,i)=>tileHTML({
+      title:v.title, sub:v.channel, thumb:v.thumb, onclickAttr:`data-res="${i}"`
+    })).join('') : '<div class="empty">Aucun résultat.</div>';
+    resultsEl.querySelectorAll('.tile[data-res]').forEach(t=>{
+      t.addEventListener('click',()=>{
+        const v = videos[t.dataset.res];
+        openFramePlayer(v.title, `https://www.youtube.com/embed/${v.id}?autoplay=1`);
+        pushHistory({title:v.title, source:'YouTube', type:'youtube', id:v.id});
+      });
+    });
+    attachFocusNav();
+  }catch(e){
+    resultsEl.innerHTML = `<div class="empty">Erreur : ${e.message}</div>`;
   }
 }
 
@@ -440,69 +479,103 @@ function renderYoutube(){
   const items = state.youtube;
   const connected = !!gAccessToken;
   viewEl.innerHTML = `
-    <div class="hero" style="height:220px;">
+    <div class="hero" style="height:200px;">
       <div>
-        <div class="tag">Vos vidéos & directs</div>
+        <div class="tag">Regarder des vidéos</div>
         <h1>YouTube</h1>
-        <p>Ajoutez vos vidéos favorites, ou connectez votre compte Google pour retrouver vos abonnements directement ici.</p>
+        <p>Recherche n'importe quelle vidéo, ou retrouve les vidéos de tes abonnements si tu es connecté.</p>
       </div>
     </div>
     <div class="panel">
-      <h3>Mon compte Google</h3>
+      <h3>Rechercher une vidéo</h3>
+      <div class="row-inline">
+        <div class="field"><label>Mot-clé, artiste, titre...</label><input id="ytSearchInput" placeholder="Ex: musique relaxante, actu foot, tuto bricolage..."></div>
+      </div>
+      <button class="btn" id="ytSearchBtn">Rechercher</button>
+    </div>
+    <div class="row">
+      <div class="row-title">Résultats</div>
+      <div class="grid" id="ytSearchResults"><div class="empty">Lance une recherche pour voir des vidéos.</div></div>
+    </div>
+    <div class="panel">
+      <h3>Mes abonnements</h3>
       ${connected
         ? `<div class="note" id="ytAuthStatus">Connecté — ${state.subscriptions.length} abonnements chargés.</div>`
         : `<button class="btn" id="ytConnectGoogle">Se connecter avec Google</button><div class="note" id="ytAuthStatus"></div>`}
     </div>
-    <div class="panel">
-      <h3>Ajouter une vidéo ou un direct manuellement</h3>
-      <div class="row-inline">
-        <div class="field">
-          <label>Lien ou ID YouTube</label>
-          <input id="ytInput" placeholder="https://www.youtube.com/watch?v=... ou ID">
-        </div>
-        <div class="field" style="flex:0 0 160px;">
-          <label>Titre (optionnel)</label>
-          <input id="ytTitle" placeholder="Nom affiché">
-        </div>
-      </div>
-      <button class="btn" id="ytAdd">Ajouter à mes tuiles</button>
-    </div>
     ${connected && state.subscriptions.length ? `
     <div class="row">
-      <div class="row-title">Mes abonnements</div>
+      <div class="row-title">Mes chaînes</div>
       <div class="tiles" id="ytSubsRow">
         ${state.subscriptions.map((s,i)=>tileHTML({title:s.title, sub:'Chaîne', badge:'Abonnement', thumb:s.thumb, onclickAttr:`data-sub="${i}"`})).join('')}
       </div>
     </div>` : ''}
+    ${ytChannelView ? `
     <div class="row">
-      <div class="row-title">${ytChannelView ? `Vidéos — ${ytChannelView.title}` : 'Continuer à regarder'}</div>
-      ${ytChannelView ? `<button class="btn secondary" id="ytBack" style="margin-bottom:14px;">← Retour aux abonnements</button>` : ''}
+      <div class="row-title">Vidéos — ${ytChannelView.title}</div>
+      <button class="btn secondary" id="ytBack" style="margin-bottom:14px;">← Retour aux abonnements</button>
+      <div class="grid" id="ytChannelGrid">
+        ${ytChannelView.videos===null ? '<div class="empty">Chargement des vidéos...</div>'
+          : ytChannelView.error ? `<div class="empty">Erreur : ${ytChannelView.error}</div>`
+          : ytChannelView.videos.length ? ytChannelView.videos.map((v,i)=>tileHTML({title:v.title, sub:ytChannelView.title, thumb:v.thumb, onclickAttr:`data-vid="${i}"`})).join('')
+          : '<div class="empty">Aucune vidéo trouvée.</div>'}
+      </div>
+    </div>` : ''}
+    <div class="row">
+      <div class="row-title">Continuer à regarder</div>
       <div class="tiles" id="ytRecentRow">
-        ${!ytChannelView ? (state.history.filter(h=>h.source==='YouTube').length ?
+        ${state.history.filter(h=>h.source==='YouTube').length ?
           state.history.filter(h=>h.source==='YouTube').slice(0,10).map(h=>tileHTML({
             title:h.title, sub:'Reprendre', badge:'YouTube', thumb:h.id?`https://img.youtube.com/vi/${h.id}/hqdefault.jpg`:undefined,
             onclickAttr:`data-play='${encodeURIComponent(JSON.stringify(h))}'`
-          })).join('') : '<div class="empty">Rien regardé pour l\'instant.</div>') : ''}
+          })).join('') : '<div class="empty">Rien regardé pour l\'instant.</div>'}
       </div>
     </div>
     <div class="row">
-      <div class="row-title">${ytChannelView ? '' : 'Ma bibliothèque'}</div>
+      <div class="row-title">Ajout manuel par lien (facultatif)</div>
+      <div class="panel">
+        <div class="row-inline">
+          <div class="field"><label>Lien ou ID YouTube</label><input id="ytInput" placeholder="https://www.youtube.com/watch?v=... ou ID"></div>
+          <div class="field" style="flex:0 0 160px;"><label>Titre (optionnel)</label><input id="ytTitle" placeholder="Nom affiché"></div>
+        </div>
+        <button class="btn" id="ytAdd">Ajouter à ma bibliothèque</button>
+      </div>
       <div class="grid" id="ytGrid">
-        ${ytChannelView
-          ? (ytChannelView.videos.length ? ytChannelView.videos.map((v,i)=>tileHTML({title:v.title, sub:ytChannelView.title, thumb:v.thumb, onclickAttr:`data-vid="${i}"`})).join('') : '<div class="empty">Aucune vidéo trouvée.</div>')
-          : (items.length? items.map((y,i)=>tileHTML({
+        ${items.length? items.map((y,i)=>tileHTML({
             title:y.title||y.id, sub:'YouTube',
             thumb:`https://img.youtube.com/vi/${y.id}/hqdefault.jpg`,
             onclickAttr:`data-idx="${i}"`
-          })).join('') : '<div class="empty">Aucune vidéo ajoutée pour l\'instant.</div>')}
+          })).join('') : ''}
       </div>
     </div>`;
+
+  document.getElementById('ytSearchBtn').addEventListener('click',()=>{
+    const q = document.getElementById('ytSearchInput').value.trim();
+    if(q) searchYouTube(q);
+  });
+  document.getElementById('ytSearchInput').addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ const q=e.target.value.trim(); if(q) searchYouTube(q); }
+  });
 
   const connectBtn = document.getElementById('ytConnectGoogle');
   if(connectBtn) connectBtn.addEventListener('click', connectGoogle);
 
   const backBtn = document.getElementById('ytBack');
   if(backBtn) backBtn.addEventListener('click', ()=>{ ytChannelView = null; renderYoutube(); attachFocusNav(); });
+
+  viewEl.querySelectorAll('#ytSubsRow .tile[data-sub]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const s = state.subscriptions[t.dataset.sub];
+      openChannelUploads(s.channelId, s.title);
+    });
+  });
+  viewEl.querySelectorAll('#ytChannelGrid .tile[data-vid]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const v = ytChannelView.videos[t.dataset.vid];
+      openFramePlayer(v.title, `https://www.youtube.com/embed/${v.id}?autoplay=1`);
+      pushHistory({title:v.title, source:'YouTube', type:'youtube', id:v.id});
+    });
+  });
 
   document.getElementById('ytAdd').addEventListener('click',()=>{
     const raw = document.getElementById('ytInput').value;
@@ -517,19 +590,6 @@ function renderYoutube(){
       const y = state.youtube[t.dataset.idx];
       openFramePlayer(y.title, `https://www.youtube.com/embed/${y.id}?autoplay=1`);
       pushHistory({title:y.title, source:'YouTube', type:'youtube', id:y.id});
-    });
-  });
-  viewEl.querySelectorAll('#ytGrid .tile[data-vid]').forEach(t=>{
-    t.addEventListener('click',()=>{
-      const v = ytChannelView.videos[t.dataset.vid];
-      openFramePlayer(v.title, `https://www.youtube.com/embed/${v.id}?autoplay=1`);
-      pushHistory({title:v.title, source:'YouTube', type:'youtube', id:v.id});
-    });
-  });
-  viewEl.querySelectorAll('#ytSubsRow .tile[data-sub]').forEach(t=>{
-    t.addEventListener('click',()=>{
-      const s = state.subscriptions[t.dataset.sub];
-      openChannelUploads(s.channelId, s.title);
     });
   });
   viewEl.querySelectorAll('#ytRecentRow .tile[data-play]').forEach(t=>{
@@ -852,13 +912,22 @@ function renderSources(){
       <p style="font-size:13px;color:var(--muted);line-height:1.6;">StreamHub se connecte directement à vos propres accès — playlist M3U, identifiants Xtream Codes, portail Stalker — sans passer par une interface tierce. Toutes les informations restent stockées localement dans votre navigateur (localStorage), rien n'est envoyé à un serveur externe.</p>
     </div>
     <div class="panel">
-      <h3>Compte YouTube (OAuth Google)</h3>
+      <h3>Mes abonnements (connexion Google)</h3>
       <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
-        Pour voir tes abonnements YouTube directement dans StreamHub. Nécessite un Client ID OAuth créé sur Google Cloud Console, et que cette appli soit ouverte depuis l'URL exacte enregistrée comme "origine JavaScript autorisée" (pas un fichier local).
+        Pour retrouver les vidéos de tes abonnements. Nécessite un Client ID OAuth, et que l'appli soit ouverte depuis l'URL exacte enregistrée comme "origine JavaScript autorisée" (pas un fichier local).
       </p>
       <div class="field"><label>Client ID Google OAuth</label><input id="googleClientIdInput" value="${state.googleClientId||''}" placeholder="xxxxxxxx.apps.googleusercontent.com"></div>
       <button class="btn" id="saveGoogleClientId">Enregistrer</button>
-      <div class="note">Ce Client ID n'est pas un secret (il est visible côté client par nature) — ne partage jamais en revanche un "Client Secret", qui n'est pas nécessaire ici.</div>
+      <div class="note">Ce Client ID n'est pas un secret (visible côté client par nature) — ne partage jamais en revanche un "Client Secret", inutile ici.</div>
+    </div>
+    <div class="panel">
+      <h3>Recherche YouTube</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
+        Une clé API distincte (pas de connexion compte) pour chercher et regarder n'importe quelle vidéo publique.
+      </p>
+      <div class="field"><label>Clé API YouTube</label><input id="youtubeApiKeyInput" value="${state.youtubeApiKey||''}" placeholder="AIzaSy..."></div>
+      <button class="btn" id="saveYoutubeApiKey">Enregistrer</button>
+      <div class="note">Créer une clé : Google Cloud Console → APIs & Services → Identifiants → Créer des identifiants → Clé API.</div>
     </div>
     <div class="panel">
       <h3>Proxy CORS (pour Xtream / Stalker)</h3>
@@ -891,6 +960,11 @@ function renderSources(){
     gTokenClient = null; // force re-init avec le nouveau Client ID
     alert('Client ID enregistré.');
   });
+  document.getElementById('saveYoutubeApiKey').addEventListener('click',()=>{
+    state.youtubeApiKey = document.getElementById('youtubeApiKeyInput').value.trim();
+    save();
+    alert('Clé API enregistrée.');
+  });
   document.getElementById('saveProxy').addEventListener('click',()=>{
     state.proxy = document.getElementById('proxyInput').value.trim();
     save();
@@ -905,52 +979,82 @@ function renderSources(){
   });
 }
 
-/* ===================== PLAYER ===================== */
+/* ===================== PLAYER (vue intégrée plein écran) ===================== */
 let hlsInstance = null;
-function openVideoPlayer(title, url){
+let playerData = null; // {title, sub, kind:'video'|'iframe', src}
+let previousView = 'home';
+
+function openVideoPlayer(title, url, sub){
   if(!url){ alert('URL de flux introuvable.'); return; }
-  document.getElementById('playerTitle').textContent = title;
-  document.getElementById('framePlayer').style.display='none';
-  document.getElementById('framePlayer').src='';
-  const video = document.getElementById('videoPlayer');
-  video.style.display='block';
-  document.getElementById('playerStatus').textContent = '';
-  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
-  if(url.includes('.m3u8') && window.Hls && Hls.isSupported()){
-    hlsInstance = new Hls();
-    hlsInstance.loadSource(url);
-    hlsInstance.attachMedia(video);
-    hlsInstance.on(Hls.Events.ERROR, (e,data)=>{
-      if(data.fatal) document.getElementById('playerStatus').textContent = 'Erreur de lecture du flux (CORS, flux hors-ligne, ou format non supporté).';
-    });
-  } else {
-    video.src = url;
-  }
-  video.play().catch(()=>{});
-  document.getElementById('playerOverlay').classList.add('open');
+  playerData = {title, sub: sub||'', kind:'video', src:url};
+  goToPlayerView();
 }
-function openFramePlayer(title, url){
+function openFramePlayer(title, url, sub){
+  playerData = {title, sub: sub||'', kind:'iframe', src:url};
+  goToPlayerView();
+}
+function goToPlayerView(){
+  if(state.view !== 'player') previousView = state.view;
+  state.view = 'player';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('viewTitle').textContent = 'Lecture';
+  renderPlayerView();
+  attachFocusNav();
+}
+function backFromPlayer(){
   if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
-  const video = document.getElementById('videoPlayer');
-  video.pause(); video.style.display='none'; video.src='';
-  document.getElementById('playerTitle').textContent = title;
-  const frame = document.getElementById('framePlayer');
-  frame.style.display='block';
-  frame.src = url;
-  document.getElementById('playerStatus').textContent = '';
-  document.getElementById('playerOverlay').classList.add('open');
+  playerData = null;
+  switchView(previousView);
+}
+function renderPlayerView(){
+  const p = playerData;
+  viewEl.innerHTML = `
+    <div class="player-page">
+      <div class="player-info">
+        <div style="display:flex;align-items:center;">
+          <button class="player-back" id="playerBackBtn">← Retour</button>
+          <div>
+            <h2>${p.title}</h2>
+            ${p.sub? `<div class="sub">${p.sub}</div>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="player-stage" id="playerStage"></div>
+      <div class="player-status-line" id="playerStatusLine"></div>
+    </div>`;
+  document.getElementById('playerBackBtn').addEventListener('click', backFromPlayer);
+
+  const stage = document.getElementById('playerStage');
+  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+
+  if(p.kind === 'iframe'){
+    const frame = document.createElement('iframe');
+    frame.src = p.src;
+    frame.allow = 'autoplay; encrypted-media';
+    frame.allowFullscreen = true;
+    stage.appendChild(frame);
+  } else {
+    const video = document.createElement('video');
+    video.id = 'videoPlayer';
+    video.controls = true;
+    video.autoplay = true;
+    stage.appendChild(video);
+    if(p.src.includes('.m3u8') && window.Hls && Hls.isSupported()){
+      hlsInstance = new Hls();
+      hlsInstance.loadSource(p.src);
+      hlsInstance.attachMedia(video);
+      hlsInstance.on(Hls.Events.ERROR, (e,data)=>{
+        if(data.fatal) document.getElementById('playerStatusLine').textContent = 'Erreur de lecture du flux (CORS, flux hors-ligne, ou format non supporté).';
+      });
+    } else {
+      video.src = p.src;
+    }
+    video.play().catch(()=>{});
+  }
 }
 function playItem(item){
-  if(item.type==='youtube') openFramePlayer(item.title, `https://www.youtube.com/embed/${item.id}?autoplay=1`);
-  else openVideoPlayer(item.title, item.url);
-}
-document.getElementById('closePlayer').addEventListener('click', closePlayer);
-function closePlayer(){
-  document.getElementById('playerOverlay').classList.remove('open');
-  const video = document.getElementById('videoPlayer');
-  video.pause(); video.src='';
-  document.getElementById('framePlayer').src='';
-  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+  if(item.type==='youtube') openFramePlayer(item.title, `https://www.youtube.com/embed/${item.id}?autoplay=1`, item.source);
+  else openVideoPlayer(item.title, item.url, item.source);
 }
 
 /* ===================== D-PAD / KEYBOARD NAVIGATION ===================== */
@@ -996,7 +1100,7 @@ function spatialNav(dir){
   if(best) setFocus(best);
 }
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){ closePlayer(); return; }
+  if(e.key==='Escape'){ if(state.view==='player') backFromPlayer(); return; }
   const tag = document.activeElement?.tagName;
   if(tag==='INPUT' || tag==='TEXTAREA') return; // laisse taper du texte normalement
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
