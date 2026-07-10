@@ -910,7 +910,7 @@ function bindIptvEvents(){
     t.addEventListener('click',()=>{
       const s = state.xtream.streams[t.dataset.idx];
       const url = `${state.xtream.server}/live/${state.xtream.username}/${state.xtream.password}/${s.id}.m3u8`;
-      openVideoPlayer(s.name, url);
+      openVideoPlayer(s.name, url, 'Xtream', !!(state.proxy||'').trim());
       pushHistory({title:s.name, source:'Xtream', type:'hls', url});
     });
   });
@@ -924,7 +924,7 @@ function bindIptvEvents(){
       if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution du flux pour "${c.name}"...`; }
       try{
         const url = await resolveStalkerStreamUrl(c);
-        openVideoPlayer(c.name, url, 'Stalker');
+        openVideoPlayer(c.name, url, 'Stalker', true);
         pushHistory({title:c.name, source:'Stalker', type:'hls', url});
         if(statusEl) statusEl.textContent = '';
       }catch(e){
@@ -1014,9 +1014,9 @@ let hlsInstance = null;
 let playerData = null; // {title, sub, kind:'video'|'iframe', src}
 let previousView = 'home';
 
-function openVideoPlayer(title, url, sub){
+function openVideoPlayer(title, url, sub, forceProxy){
   if(!url){ alert('URL de flux introuvable.'); return; }
-  playerData = {title, sub: sub||'', kind:'video', src:url};
+  playerData = {title, sub: sub||'', kind:'video', src:url, forceProxy: !!forceProxy};
   goToPlayerView();
 }
 function openFramePlayer(title, url, sub){
@@ -1071,7 +1071,7 @@ function renderPlayerView(){
   video.controls = true;
   video.autoplay = true;
   stage.appendChild(video);
-  loadVideoSource(video, p.src, false);
+  loadVideoSource(video, p.src, !!p.forceProxy);
 }
 
 function loadVideoSource(video, url, viaProxy){
