@@ -804,6 +804,23 @@ function stalkerPanel(){
       </div>
     </div>`;
 }
+async function resolveStalkerStreamUrl(channel){
+  const st = state.stalker;
+  if(!st.portal || !st.token) throw new Error('Session Stalker expirée, reconnecte-toi.');
+  const cookieMac = `mac=${encodeURIComponent(st.mac)}`;
+  const url = `${st.portal}/portal.php?type=itv&action=create_link&cmd=${encodeURIComponent(channel.cmd)}&JsHttpRequest=1-xml`;
+  const res = await proxied(url, { 'Authorization': 'Bearer '+st.token, 'Cookie': cookieMac });
+  const text = await res.text();
+  if(!text || !text.trim()) throw new Error('Réponse vide du portail (CORS ou session expirée).');
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ throw new Error('Réponse non-JSON reçue.'); }
+  let streamUrl = data?.js?.cmd || '';
+  streamUrl = streamUrl.replace(/^ffmpeg\s+/i, '').trim();
+  if(!streamUrl) throw new Error('Aucune URL de flux renvoyée par le portail.');
+  return streamUrl;
+}
+
 async function stalkerConnect(){
   const portal = document.getElementById('stPortal').value.replace(/\/portal\.php.*$/,'');
   const mac = document.getElementById('stMac').value;
@@ -901,10 +918,18 @@ function bindIptvEvents(){
   const stBtn = document.getElementById('stConnect');
   if(stBtn) stBtn.addEventListener('click', stalkerConnect);
   viewEl.querySelectorAll('#stGrid .tile[data-idx]').forEach(t=>{
-    t.addEventListener('click',()=>{
+    t.addEventListener('click', async ()=>{
       const c = state.stalker.channels[t.dataset.idx];
-      openVideoPlayer(c.name, c.cmd?.replace('ffmpeg ','') || '');
-      pushHistory({title:c.name, source:'Stalker', type:'hls', url:c.cmd});
+      const statusEl = document.getElementById('stStatus');
+      if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution du flux pour "${c.name}"...`; }
+      try{
+        const url = await resolveStalkerStreamUrl(c);
+        openVideoPlayer(c.name, url, 'Stalker');
+        pushHistory({title:c.name, source:'Stalker', type:'hls', url});
+        if(statusEl) statusEl.textContent = '';
+      }catch(e){
+        if(statusEl) statusEl.textContent = "Impossible de résoudre le flux : "+e.message;
+      }
     });
   });
 }
@@ -1025,7 +1050,7 @@ function renderPlayerView(){
         </div>
       </div>
       <div class="player-stage" id="playerStage"></div>
-      <div class="player-status-line" id="playerStatusLine"></div>
+      <div class="player-status-line" id="playerStatusLine">${p.kind==='video' ? 'Chargement du flux...' : ''}</div>
     </div>`;
   document.getElementById('playerBackBtn').addEventListener('click', backFromPlayer);
 
@@ -1038,24 +1063,74 @@ function renderPlayerView(){
     frame.allow = 'autoplay; encrypted-media';
     frame.allowFullscreen = true;
     stage.appendChild(frame);
-  } else {
-    const video = document.createElement('video');
-    video.id = 'videoPlayer';
-    video.controls = true;
-    video.autoplay = true;
-    stage.appendChild(video);
-    if(p.src.includes('.m3u8') && window.Hls && Hls.isSupported()){
-      hlsInstance = new Hls();
-      hlsInstance.loadSource(p.src);
-      hlsInstance.attachMedia(video);
-      hlsInstance.on(Hls.Events.ERROR, (e,data)=>{
-        if(data.fatal) document.getElementById('playerStatusLine').textContent = 'Erreur de lecture du flux (CORS, flux hors-ligne, ou format non supporté).';
-      });
-    } else {
-      video.src = p.src;
-    }
-    video.play().catch(()=>{});
+    return;
   }
+
+  const video = document.createElement('video');
+  video.id = 'videoPlayer';
+  video.controls = true;
+  video.autoplay = true;
+  stage.appendChild(video);
+  loadVideoSource(video, p.src, false);
+}
+
+function loadVideoSource(video, url, viaProxy){
+  const statusEl = document.getElementById('playerStatusLine');
+  const isDirectFile = /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+  const actualUrl = viaProxy ? buildProxiedUrl(url) : url;
+
+  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+
+  let settled = false;
+  const timeout = setTimeout(()=>{
+    if(!settled && statusEl) showRetryOptions(video, url, 'Le flux met trop de temps à démarrer (CORS probable ou serveur injoignable).');
+  }, 9000);
+
+  video.onerror = ()=>{
+    clearTimeout(timeout);
+    if(!settled) showRetryOptions(video, url, "Format non lisible directement par le navigateur, ou flux inaccessible.");
+  };
+  video.oncanplay = ()=>{ settled = true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; };
+
+  if(!isDirectFile && window.Hls && Hls.isSupported()){
+    hlsInstance = new Hls();
+    hlsInstance.loadSource(actualUrl);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, ()=>{ settled = true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; });
+    hlsInstance.on(Hls.Events.ERROR, (e,data)=>{
+      if(data.fatal){
+        clearTimeout(timeout);
+        if(!settled) showRetryOptions(video, url, "Impossible de charger ce flux avec HLS.js (CORS, ou format non standard) : "+data.details);
+      }
+    });
+  } else {
+    video.src = actualUrl;
+  }
+  video.play().catch(()=>{});
+}
+
+function buildProxiedUrl(url){
+  const proxy = (state.proxy||'').trim();
+  if(!proxy) return url;
+  if(proxy.endsWith('=') || proxy.endsWith('/')) return proxy + encodeURIComponent(url);
+  const p = new URL(proxy);
+  p.searchParams.set('url', url);
+  return p.toString();
+}
+
+function showRetryOptions(video, originalUrl, message){
+  const statusEl = document.getElementById('playerStatusLine');
+  if(!statusEl) return;
+  const hasProxy = !!(state.proxy||'').trim();
+  statusEl.innerHTML = `
+    <span style="color:var(--danger);">${message}</span>
+    ${hasProxy ? ` — <button class="btn secondary" id="retryProxyBtn" style="padding:4px 10px;font-size:11px;margin-left:6px;">Réessayer via le proxy</button>` : ''}
+  `;
+  const retryBtn = document.getElementById('retryProxyBtn');
+  if(retryBtn) retryBtn.addEventListener('click', ()=>{
+    statusEl.textContent = 'Nouvel essai via le proxy...';
+    loadVideoSource(video, originalUrl, true);
+  });
 }
 function playItem(item){
   if(item.type==='youtube') openFramePlayer(item.title, `https://www.youtube.com/embed/${item.id}?autoplay=1`, item.source);
