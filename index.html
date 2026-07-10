@@ -924,6 +924,8 @@ function bindIptvEvents(){
       if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution du flux pour "${c.name}"...`; }
       try{
         const url = await resolveStalkerStreamUrl(c);
+        if(statusEl) statusEl.textContent = `URL résolue : ${url}`;
+        console.log('[StreamHub] Stalker stream URL:', url);
         openVideoPlayer(c.name, url, 'Stalker', true);
         pushHistory({title:c.name, source:'Stalker', type:'hls', url});
         if(statusEl) statusEl.textContent = '';
@@ -1051,6 +1053,7 @@ function renderPlayerView(){
       </div>
       <div class="player-stage" id="playerStage"></div>
       <div class="player-status-line" id="playerStatusLine">${p.kind==='video' ? 'Chargement du flux...' : ''}</div>
+      <div class="player-status-line" style="opacity:.5;word-break:break-all;">URL : ${p.src}</div>
     </div>`;
   document.getElementById('playerBackBtn').addEventListener('click', backFromPlayer);
 
