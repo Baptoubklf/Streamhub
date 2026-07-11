@@ -799,11 +799,40 @@ function stalkerPanel(){
       <div class="note" id="stStatus" style="display:none;"></div>
     </div>
     <div class="row">
-      <div class="row-title">Chaînes</div>
+      <div class="row-title">Chaînes ${chans.length? `(${chans.length})`:''}</div>
+      ${chans.length? `<button class="btn secondary" id="stExportM3U" style="margin-bottom:14px;">📥 Exporter en M3U</button>
+      <div class="note" id="stExportStatus" style="display:none;"></div>` : ''}
       <div class="grid" id="stGrid">
         ${chans.length? chans.map((c,i)=>tileHTML({title:c.name, sub:'Stalker', badge:'Stalker', onclickAttr:`data-idx="${i}"`})).join('') : '<div class="empty">Connectez-vous pour afficher vos chaînes.</div>'}
       </div>
     </div>`;
+}
+function extractStalkerChannelId(cmd){
+  const m = (cmd||'').match(/\/ch\/(\d+)_?/) || (cmd||'').match(/stream=(\d+)/);
+  return m ? m[1] : null;
+}
+function exportStalkerAsM3U(){
+  const st = state.stalker;
+  const statusEl = document.getElementById('stExportStatus');
+  if(!st.portal || !st.mac){ if(statusEl){statusEl.style.display='block';statusEl.textContent='Connecte-toi d\'abord.';} return; }
+  const lines = ['#EXTM3U'];
+  let count = 0;
+  for(const c of st.channels){
+    const id = extractStalkerChannelId(c.cmd);
+    if(!id) continue;
+    const url = `${st.portal}/play/live.php?mac=${encodeURIComponent(st.mac)}&stream=${id}&extension=m3u8`;
+    lines.push(`#EXTINF:-1,${c.name}`);
+    lines.push(url);
+    count++;
+  }
+  const blob = new Blob([lines.join('\n')], {type:'application/vnd.apple.mpegurl'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'stalker-export.m3u8';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `${count} chaînes exportées. Teste le fichier dans VLC pour confirmer si ce motif d'URL fonctionne sur ton portail.`; }
 }
 async function resolveStalkerStreamUrl(channel){
   const st = state.stalker;
@@ -917,6 +946,8 @@ function bindIptvEvents(){
   });
 
   const stBtn = document.getElementById('stConnect');
+  const stExportBtn = document.getElementById('stExportM3U');
+  if(stExportBtn) stExportBtn.addEventListener('click', exportStalkerAsM3U);
   if(stBtn) stBtn.addEventListener('click', stalkerConnect);
   viewEl.querySelectorAll('#stGrid .tile[data-idx]').forEach(t=>{
     t.addEventListener('click', async ()=>{
