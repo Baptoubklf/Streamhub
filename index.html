@@ -799,12 +799,24 @@ function stalkerPanel(){
       <div class="note" id="stStatus" style="display:none;"></div>
     </div>
     <div class="row">
-      <div class="row-title">Chaînes ${chans.length? `(${chans.length})`:''}</div>
+      <div class="row-title">📡 TV en direct ${chans.length? `(${chans.length})`:''}</div>
       ${chans.length? `<button class="btn secondary" id="stExportM3U" style="margin-bottom:14px;">📥 Exporter en M3U</button>
       <div class="note" id="stExportStatus" style="display:none;"></div>` : ''}
-      <div class="grid" id="stGrid">
-        ${chans.length? chans.map((c,i)=>tileHTML({title:c.name, sub:'Stalker', badge:'Stalker', onclickAttr:`data-idx="${i}"`})).join('') : '<div class="empty">Connectez-vous pour afficher vos chaînes.</div>'}
-      </div>
+      ${chans.length && !st.itvCategoryView ? `
+        <div class="grid">
+          ${tileHTML({title:'Toutes les chaînes', sub:`${chans.length} chaînes`, badge:'TV', onclickAttr:`data-itvcat="all"`})}
+          ${(st.itvCategories||[]).map((c,i)=>{
+            const count = chans.filter(ch=>String(ch.genreId)===String(c.id)).length;
+            return count ? tileHTML({title:c.title, sub:`${count} chaînes`, badge:'TV', onclickAttr:`data-itvcat="${i}"`}) : '';
+          }).join('')}
+        </div>` : ''}
+      ${st.itvCategoryView ? `
+        <button class="btn secondary" id="stItvBack" style="margin:14px 0;">← Retour aux catégories</button>
+        <div class="row-title">${st.itvCategoryView.title}</div>
+        <div class="grid" id="stGrid">
+          ${st.itvCategoryView.channels.map((c,i)=>tileHTML({title:c.name, sub:'Stalker', badge:'TV', onclickAttr:`data-idx="${i}"`})).join('')}
+        </div>` : ''}
+      ${!chans.length ? '<div class="empty">Connectez-vous pour afficher vos chaînes.</div>' : ''}
     </div>
     ${st.token ? `
     <div class="panel">
@@ -1012,8 +1024,16 @@ async function stalkerConnect(){
 
     const chRes = await proxied(`${base}/portal.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml`, { 'Authorization': 'Bearer '+token, 'Cookie': cookieMac });
     const chData = await safeJson(chRes, 'get_all_channels');
-    const list = (chData?.js?.data || []).map(c=>({ name: c.name, id: c.id, cmd: c.cmd }));
-    state.stalker = { portal, mac, channels: list, token };
+    const list = (chData?.js?.data || []).map(c=>({ name: c.name, id: c.id, cmd: c.cmd, genreId: c.tv_genre_id }));
+
+    let genres = [];
+    try{
+      const genRes = await proxied(`${base}/portal.php?type=itv&action=get_genres&JsHttpRequest=1-xml`, { 'Authorization': 'Bearer '+token, 'Cookie': cookieMac });
+      const genData = await safeJson(genRes, 'get_genres');
+      genres = (genData?.js || []).map(g=>({id:g.id, title:g.title}));
+    }catch(e){ /* les genres sont un bonus, on continue sans si ça échoue */ }
+
+    state.stalker = { portal, mac, channels: list, itvCategories: genres, token };
     save();
     statusEl.textContent = list.length + ' chaînes récupérées.' + (proxy? ' (via proxy)':'');
     renderIptv('stalker');
@@ -1145,9 +1165,28 @@ function bindIptvEvents(){
     });
   });
   if(stBtn) stBtn.addEventListener('click', stalkerConnect);
+  viewEl.querySelectorAll('[data-itvcat]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const val = t.dataset.itvcat;
+      const st = state.stalker;
+      if(val === 'all'){
+        st.itvCategoryView = {title:'Toutes les chaînes', channels: st.channels};
+      } else {
+        const cat = st.itvCategories[val];
+        st.itvCategoryView = {title:cat.title, channels: st.channels.filter(ch=>String(ch.genreId)===String(cat.id))};
+      }
+      renderIptv('stalker'); attachFocusNav();
+    });
+  });
+  const stItvBack = document.getElementById('stItvBack');
+  if(stItvBack) stItvBack.addEventListener('click', ()=>{
+    state.stalker.itvCategoryView = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
+
   viewEl.querySelectorAll('#stGrid .tile[data-idx]').forEach(t=>{
     t.addEventListener('click', async ()=>{
-      const c = state.stalker.channels[t.dataset.idx];
+      const c = state.stalker.itvCategoryView.channels[t.dataset.idx];
       const statusEl = document.getElementById('stStatus');
       if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution du flux pour "${c.name}"...`; }
       try{
