@@ -902,8 +902,15 @@ async function playStalkerVod(item){
   const url = `${st.portal}/portal.php?type=vod&action=create_link&cmd=${encodeURIComponent(item.cmd)}&JsHttpRequest=1-xml`;
   const res = await proxied(url, { 'Authorization': 'Bearer '+st.token, 'Cookie': cookieMac });
   const text = await res.text();
-  const data = JSON.parse(text);
+  console.log('[StreamHub] VOD create_link raw response:', text);
+  if(!text || !text.trim()) throw new Error('Réponse vide du portail pour ce film/série.');
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ throw new Error('Réponse non-JSON reçue : '+text.slice(0,150)); }
   let streamUrl = (data?.js?.cmd || '').replace(/^ffmpeg\s+/i,'').trim();
+  if(!streamUrl){
+    throw new Error('Aucune URL de flux dans la réponse. Réponse brute : '+JSON.stringify(data).slice(0,200));
+  }
   return streamUrl;
 }
 
@@ -1116,9 +1123,10 @@ function bindIptvEvents(){
       if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution de "${item.name}"...`; }
       try{
         const url = await playStalkerVod(item);
-        openVideoPlayer(item.name, url, 'Stalker VOD', true);
+        if(statusEl) statusEl.textContent = `URL résolue : ${url}`;
+        console.log('[StreamHub] VOD stream URL:', url);
+        openVideoPlayer(item.name, url, 'Stalker VOD', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
         pushHistory({title:item.name, source:'Stalker', type:'hls', url});
-        if(statusEl) statusEl.textContent = '';
       }catch(e){ if(statusEl) statusEl.textContent = 'Erreur : '+e.message; }
     });
   });
@@ -1158,7 +1166,7 @@ function bindIptvEvents(){
       if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution de l'épisode ${ep}...`; }
       try{
         const url = await playStalkerSeriesEpisode(item, ep);
-        openVideoPlayer(`${item.name} — Ép. ${ep}`, url, 'Stalker Séries', true);
+        openVideoPlayer(`${item.name} — Ép. ${ep}`, url, 'Stalker Séries', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
         pushHistory({title:`${item.name} — Ép. ${ep}`, source:'Stalker', type:'hls', url});
         if(statusEl) statusEl.textContent = '';
       }catch(e){ if(statusEl) statusEl.textContent = 'Erreur : '+e.message; }
@@ -1193,7 +1201,7 @@ function bindIptvEvents(){
         const url = await resolveStalkerStreamUrl(c);
         if(statusEl) statusEl.textContent = `URL résolue : ${url}`;
         console.log('[StreamHub] Stalker stream URL:', url);
-        openVideoPlayer(c.name, url, 'Stalker', true);
+        openVideoPlayer(c.name, url, 'Stalker', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
         pushHistory({title:c.name, source:'Stalker', type:'hls', url});
         if(statusEl) statusEl.textContent = '';
       }catch(e){
@@ -1283,9 +1291,9 @@ let hlsInstance = null;
 let playerData = null; // {title, sub, kind:'video'|'iframe', src}
 let previousView = 'home';
 
-function openVideoPlayer(title, url, sub, forceProxy){
+function openVideoPlayer(title, url, sub, forceProxy, streamHeaders){
   if(!url){ alert('URL de flux introuvable.'); return; }
-  playerData = {title, sub: sub||'', kind:'video', src:url, forceProxy: !!forceProxy};
+  playerData = {title, sub: sub||'', kind:'video', src:url, forceProxy: !!forceProxy, headers: streamHeaders||null};
   goToPlayerView();
 }
 function openFramePlayer(title, url, sub){
@@ -1342,19 +1350,19 @@ function renderPlayerView(){
   video.controls = true;
   video.autoplay = true;
   stage.appendChild(video);
-  loadVideoSource(video, p.src, !!p.forceProxy);
+  loadVideoSource(video, p.src, !!p.forceProxy, p.headers);
 }
 
 let mpegtsInstance = null;
 
-function loadVideoSource(video, url, viaProxy){
+function loadVideoSource(video, url, viaProxy, streamHeaders){
   const statusEl = document.getElementById('playerStatusLine');
   const isDirectFile = /\.(mp4|webm|ogg)(\?|$)/i.test(url);
   // Beaucoup de portails Stalker/Ministra diffusent en MPEG-TS brut continu
   // (ex: "live.php?...&extension=ts") plutôt qu'en HLS segmenté (.m3u8).
   // Ni <video> natif ni HLS.js ne savent lire ça : il faut mpegts.js (MSE).
   const isRawMpegTs = /extension=ts\b/i.test(url) || /\.ts(\?|$)/i.test(url);
-  const actualUrl = viaProxy ? buildProxiedUrl(url) : url;
+  const actualUrl = viaProxy ? buildProxiedUrl(url, streamHeaders) : url;
 
   if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
   if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
@@ -1397,12 +1405,13 @@ function loadVideoSource(video, url, viaProxy){
   }
 }
 
-function buildProxiedUrl(url){
+function buildProxiedUrl(url, headers){
   const proxy = (state.proxy||'').trim();
   if(!proxy) return url;
   if(proxy.endsWith('=') || proxy.endsWith('/')) return proxy + encodeURIComponent(url);
   const p = new URL(proxy);
   p.searchParams.set('url', url);
+  if(headers) p.searchParams.set('headers', JSON.stringify(headers));
   return p.toString();
 }
 
@@ -1417,7 +1426,7 @@ function showRetryOptions(video, originalUrl, message){
   const retryBtn = document.getElementById('retryProxyBtn');
   if(retryBtn) retryBtn.addEventListener('click', ()=>{
     statusEl.textContent = 'Nouvel essai via le proxy...';
-    loadVideoSource(video, originalUrl, true);
+    loadVideoSource(video, originalUrl, true, playerData?.headers);
   });
 }
 function playItem(item){
