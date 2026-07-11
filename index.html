@@ -809,37 +809,36 @@ function stalkerPanel(){
     ${st.token ? `
     <div class="panel">
       <h3>🎬 Films (VOD)</h3>
-      ${st.vodCategories? `
-        <div class="row-inline">
-          <div class="field"><label>Catégorie</label>
-            <select id="stVodCat">
-              <option value="*">Toutes</option>
-              ${st.vodCategories.map(c=>`<option value="${c.id}">${c.title}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <button class="btn" id="stLoadVodItems">Charger les films</button>
-      ` : `<button class="btn" id="stLoadVod">Charger les catégories Films</button>`}
+      ${!st.vodCategories ? `<button class="btn" id="stLoadVod">Charger les catégories Films</button>` : ''}
       <div class="note" id="stVodStatus" style="display:none;"></div>
-      ${st.vodItems?.length ? `<div class="grid" style="margin-top:14px;" id="stVodGrid">${st.vodItems.map((v,i)=>tileHTML({title:v.name, sub:'Film', badge:'VOD', thumb:v.thumb, onclickAttr:`data-vodidx="${i}"`})).join('')}</div>` : ''}
+      ${st.vodCategories && !st.vodCategoryView ? `
+        <div class="grid" style="margin-top:14px;">
+          ${st.vodCategories.map((c,i)=>tileHTML({title:c.title, sub:'Catégorie', badge:'VOD', onclickAttr:`data-vodcat="${i}"`})).join('')}
+        </div>` : ''}
+      ${st.vodCategoryView ? `
+        <button class="btn secondary" id="stVodBack" style="margin:14px 0;">← Retour aux catégories</button>
+        <div class="row-title">${st.vodCategoryView.title}</div>
+        <div class="grid" id="stVodGrid">
+          ${st.vodItems?.length ? st.vodItems.map((v,i)=>tileHTML({title:v.name, sub:'Film', badge:'VOD', thumb:v.thumb, onclickAttr:`data-vodidx="${i}"`})).join('') : '<div class="empty">Chargement...</div>'}
+        </div>` : ''}
     </div>
     <div class="panel">
       <h3>📺 Séries</h3>
-      ${st.seriesCategories? `
-        <div class="row-inline">
-          <div class="field"><label>Catégorie</label>
-            <select id="stSeriesCat">
-              <option value="*">Toutes</option>
-              ${st.seriesCategories.map(c=>`<option value="${c.id}">${c.title}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <button class="btn" id="stLoadSeriesItems">Charger les séries</button>
-      ` : `<button class="btn" id="stLoadSeries">Charger les catégories Séries</button>`}
+      ${!st.seriesCategories ? `<button class="btn" id="stLoadSeries">Charger les catégories Séries</button>` : ''}
       <div class="note" id="stSeriesStatus" style="display:none;"></div>
-      ${st.seriesItems?.length ? `<div class="grid" style="margin-top:14px;" id="stSeriesGrid">${st.seriesItems.map((v,i)=>tileHTML({title:v.name, sub:'Série', badge:'Series', thumb:v.thumb, onclickAttr:`data-seriesidx="${i}"`})).join('')}</div>` : ''}
+      ${st.seriesCategories && !st.seriesCategoryView ? `
+        <div class="grid" style="margin-top:14px;">
+          ${st.seriesCategories.map((c,i)=>tileHTML({title:c.title, sub:'Catégorie', badge:'Series', onclickAttr:`data-seriescat="${i}"`})).join('')}
+        </div>` : ''}
+      ${st.seriesCategoryView && !st.episodeView ? `
+        <button class="btn secondary" id="stSeriesBack" style="margin:14px 0;">← Retour aux catégories</button>
+        <div class="row-title">${st.seriesCategoryView.title}</div>
+        <div class="grid" id="stSeriesGrid">
+          ${st.seriesItems?.length ? st.seriesItems.map((v,i)=>tileHTML({title:v.name, sub:'Série', badge:'Series', thumb:v.thumb, onclickAttr:`data-seriesidx="${i}"`})).join('') : '<div class="empty">Chargement...</div>'}
+        </div>` : ''}
       ${st.episodeView ? `
-        <div class="row-title" style="margin-top:18px;">Épisodes — ${st.episodeView.title}</div>
+        <button class="btn secondary" id="stEpisodeBack" style="margin:14px 0;">← Retour aux séries</button>
+        <div class="row-title">Épisodes — ${st.episodeView.title}</div>
         <div class="tiles">
           ${st.episodeView.episodes.map(ep=>`<div class="tile" tabindex="0" data-epnum="${ep}" style="flex:0 0 90px;height:70px;display:flex;align-items:center;justify-content:center;">
             <div class="tile-body" style="position:static;"><div class="tile-title">Ép. ${ep}</div></div>
@@ -868,17 +867,22 @@ async function loadStalkerVodCategories(){
     renderIptv('stalker');
   }catch(e){ statusEl.textContent = 'Erreur : '+e.message; }
 }
-async function loadStalkerVodItems(){
+async function loadStalkerVodItems(catId, catTitle){
   const statusEl = document.getElementById('stVodStatus');
-  const catId = document.getElementById('stVodCat').value;
-  statusEl.style.display='block'; statusEl.textContent = 'Chargement des films...';
+  state.stalker.vodCategoryView = {id:catId, title:catTitle};
+  state.stalker.vodItems = null;
+  renderIptv('stalker'); attachFocusNav();
   try{
     const data = await stalkerApiCall('vod_items', `type=vod&action=get_ordered_list&category_id=${catId}&p=1&JsHttpRequest=1-xml`);
     const items = (data?.js?.data || []).map(v=>({ name:v.name, cmd:v.cmd, thumb:v.screenshot_uri || v.pic }));
     state.stalker.vodItems = items;
-    statusEl.textContent = `${items.length} films chargés.`;
-    renderIptv('stalker');
-  }catch(e){ statusEl.textContent = 'Erreur : '+e.message; }
+    renderIptv('stalker'); attachFocusNav();
+  }catch(e){
+    state.stalker.vodItems = [];
+    renderIptv('stalker'); attachFocusNav();
+    const s = document.getElementById('stVodStatus');
+    if(s){ s.style.display='block'; s.textContent = 'Erreur : '+e.message; }
+  }
 }
 async function playStalkerVod(item){
   const st = state.stalker;
@@ -901,17 +905,22 @@ async function loadStalkerSeriesCategories(){
     renderIptv('stalker');
   }catch(e){ statusEl.textContent = 'Erreur : '+e.message; }
 }
-async function loadStalkerSeriesItems(){
+async function loadStalkerSeriesItems(catId, catTitle){
   const statusEl = document.getElementById('stSeriesStatus');
-  const catId = document.getElementById('stSeriesCat').value;
-  statusEl.style.display='block'; statusEl.textContent = 'Chargement des séries...';
+  state.stalker.seriesCategoryView = {id:catId, title:catTitle};
+  state.stalker.seriesItems = null;
+  renderIptv('stalker'); attachFocusNav();
   try{
     const data = await stalkerApiCall('series_items', `type=series&action=get_ordered_list&category_id=${catId}&p=1&JsHttpRequest=1-xml`);
     const items = (data?.js?.data || []).map(v=>({ name:v.name, cmd:v.cmd, thumb:v.screenshot_uri || v.pic, series: v.series || [] }));
     state.stalker.seriesItems = items;
-    statusEl.textContent = `${items.length} séries chargées.`;
-    renderIptv('stalker');
-  }catch(e){ statusEl.textContent = 'Erreur : '+e.message; }
+    renderIptv('stalker'); attachFocusNav();
+  }catch(e){
+    state.stalker.seriesItems = [];
+    renderIptv('stalker'); attachFocusNav();
+    const s = document.getElementById('stSeriesStatus');
+    if(s){ s.style.display='block'; s.textContent = 'Erreur : '+e.message; }
+  }
 }
 async function playStalkerSeriesEpisode(item, episodeNum){
   const st = state.stalker;
@@ -1068,8 +1077,18 @@ function bindIptvEvents(){
 
   const stLoadVod = document.getElementById('stLoadVod');
   if(stLoadVod) stLoadVod.addEventListener('click', loadStalkerVodCategories);
-  const stLoadVodItems = document.getElementById('stLoadVodItems');
-  if(stLoadVodItems) stLoadVodItems.addEventListener('click', loadStalkerVodItems);
+  viewEl.querySelectorAll('[data-vodcat]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const cat = state.stalker.vodCategories[t.dataset.vodcat];
+      loadStalkerVodItems(cat.id, cat.title);
+    });
+  });
+  const stVodBack = document.getElementById('stVodBack');
+  if(stVodBack) stVodBack.addEventListener('click', ()=>{
+    state.stalker.vodCategoryView = null;
+    state.stalker.vodItems = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
   viewEl.querySelectorAll('#stVodGrid .tile[data-vodidx]').forEach(t=>{
     t.addEventListener('click', async ()=>{
       const item = state.stalker.vodItems[t.dataset.vodidx];
@@ -1086,14 +1105,29 @@ function bindIptvEvents(){
 
   const stLoadSeries = document.getElementById('stLoadSeries');
   if(stLoadSeries) stLoadSeries.addEventListener('click', loadStalkerSeriesCategories);
-  const stLoadSeriesItems = document.getElementById('stLoadSeriesItems');
-  if(stLoadSeriesItems) stLoadSeriesItems.addEventListener('click', loadStalkerSeriesItems);
+  viewEl.querySelectorAll('[data-seriescat]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const cat = state.stalker.seriesCategories[t.dataset.seriescat];
+      loadStalkerSeriesItems(cat.id, cat.title);
+    });
+  });
+  const stSeriesBack = document.getElementById('stSeriesBack');
+  if(stSeriesBack) stSeriesBack.addEventListener('click', ()=>{
+    state.stalker.seriesCategoryView = null;
+    state.stalker.seriesItems = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
+  const stEpisodeBack = document.getElementById('stEpisodeBack');
+  if(stEpisodeBack) stEpisodeBack.addEventListener('click', ()=>{
+    state.stalker.episodeView = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
   viewEl.querySelectorAll('#stSeriesGrid .tile[data-seriesidx]').forEach(t=>{
     t.addEventListener('click', ()=>{
       const item = state.stalker.seriesItems[t.dataset.seriesidx];
       const episodes = item.series && item.series.length ? item.series : [1];
       state.stalker.episodeView = {title:item.name, episodes, item};
-      renderIptv('stalker');
+      renderIptv('stalker'); attachFocusNav();
     });
   });
   viewEl.querySelectorAll('.tile[data-epnum]').forEach(t=>{
