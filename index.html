@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StreamHub</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
@@ -1035,6 +1036,7 @@ function goToPlayerView(){
 }
 function backFromPlayer(){
   if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+  if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
   playerData = null;
   switchView(previousView);
 }
@@ -1077,12 +1079,19 @@ function renderPlayerView(){
   loadVideoSource(video, p.src, !!p.forceProxy);
 }
 
+let mpegtsInstance = null;
+
 function loadVideoSource(video, url, viaProxy){
   const statusEl = document.getElementById('playerStatusLine');
   const isDirectFile = /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+  // Beaucoup de portails Stalker/Ministra diffusent en MPEG-TS brut continu
+  // (ex: "live.php?...&extension=ts") plutôt qu'en HLS segmenté (.m3u8).
+  // Ni <video> natif ni HLS.js ne savent lire ça : il faut mpegts.js (MSE).
+  const isRawMpegTs = /extension=ts\b/i.test(url) || /\.ts(\?|$)/i.test(url);
   const actualUrl = viaProxy ? buildProxiedUrl(url) : url;
 
   if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+  if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
 
   let settled = false;
   const timeout = setTimeout(()=>{
@@ -1095,7 +1104,17 @@ function loadVideoSource(video, url, viaProxy){
   };
   video.oncanplay = ()=>{ settled = true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; };
 
-  if(!isDirectFile && window.Hls && Hls.isSupported()){
+  if(isRawMpegTs && window.mpegts && mpegts.getFeatureList().mseLivePlayback){
+    if(statusEl) statusEl.textContent = 'Flux MPEG-TS détecté, lecture via mpegts.js...';
+    mpegtsInstance = mpegts.createPlayer({ type:'mpegts', isLive:true, url: actualUrl });
+    mpegtsInstance.attachMediaElement(video);
+    mpegtsInstance.on(mpegts.Events.ERROR, (type, detail)=>{
+      clearTimeout(timeout);
+      if(!settled) showRetryOptions(video, url, `Erreur mpegts.js (${type}: ${detail}) — CORS probable ou flux hors-ligne.`);
+    });
+    mpegtsInstance.load();
+    mpegtsInstance.play().then(()=>{ settled=true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; }).catch(()=>{});
+  } else if(!isDirectFile && !isRawMpegTs && window.Hls && Hls.isSupported()){
     hlsInstance = new Hls();
     hlsInstance.loadSource(actualUrl);
     hlsInstance.attachMedia(video);
@@ -1108,8 +1127,8 @@ function loadVideoSource(video, url, viaProxy){
     });
   } else {
     video.src = actualUrl;
+    video.play().catch(()=>{});
   }
-  video.play().catch(()=>{});
 }
 
 function buildProxiedUrl(url){
