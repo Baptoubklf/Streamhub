@@ -9,14 +9,14 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
-  --bg:#0A0E14;
-  --surface:#12171F;
-  --surface2:#1B222C;
-  --amber:#FFB020;
-  --teal:#2DD4BF;
-  --text:#E8ECF1;
-  --muted:#8B96A5;
-  --danger:#FF5D5D;
+  --bg:#0A0A0A;
+  --surface:#141414;
+  --surface2:#232323;
+  --amber:#E50914;
+  --teal:#F5F5F1;
+  --text:#F5F5F1;
+  --muted:#8C8C8C;
+  --danger:#FF6161;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
@@ -67,7 +67,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 .nav-item svg{flex-shrink:0;width:22px;height:22px;}
 .nav-label{opacity:0;transition:opacity .15s;font-size:14px;font-weight:600;}
 .sidebar:hover .nav-label{opacity:1;}
-.nav-item.active{color:var(--amber);background:rgba(255,176,32,0.08);}
+.nav-item.active{color:var(--amber);background:rgba(229,9,20,0.12);}
 .nav-item.active::before{
   content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber);
 }
@@ -112,7 +112,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   transform:scale(1.06);
   z-index:2;
   border-color:var(--amber);
-  box-shadow:0 0 0 3px rgba(255,176,32,.15), 0 10px 24px rgba(0,0,0,.5);
+  box-shadow:0 0 0 3px rgba(229,9,20,.35), 0 10px 24px rgba(0,0,0,.5);
 }
 .tile.focused::after{
   content:'';position:absolute;inset:-6px;border-radius:14px;
@@ -146,6 +146,23 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   display:flex;align-items:flex-end;padding:28px;
   border:1px solid rgba(255,255,255,.05);
 }
+.hero-netflix{
+  height:340px;
+  background:
+    linear-gradient(180deg, rgba(10,10,10,0) 40%, rgba(10,10,10,1) 100%),
+    radial-gradient(circle at 15% 25%, rgba(229,9,20,.35), transparent 55%),
+    linear-gradient(135deg, #1a1a1a, #0A0A0A 70%);
+  border:none;
+}
+.hero-actions{display:flex;gap:12px;margin-top:18px;}
+.hero-btn{
+  border:none;border-radius:6px;padding:12px 26px;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+}
+.hero-btn-primary{background:#fff;color:#000;}
+.hero-btn-primary:hover{background:rgba(255,255,255,.85);}
+.hero-btn-secondary{background:rgba(109,109,110,.5);color:#fff;}
+.hero-btn-secondary:hover{background:rgba(109,109,110,.35);}
 .hero h1{font-size:30px;margin-bottom:8px;}
 .hero p{color:var(--muted);max-width:520px;font-size:14px;line-height:1.5;}
 .hero .tag{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:1.5px;margin-bottom:10px;text-transform:uppercase;}
@@ -163,7 +180,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 .row-inline{display:flex;gap:12px;}
 .row-inline .field{flex:1;}
 .btn{
-  background:var(--amber);color:#1a1300;border:none;padding:10px 18px;border-radius:8px;
+  background:var(--amber);color:#FFFFFF;border:none;padding:10px 18px;border-radius:8px;
   font-weight:700;cursor:pointer;font-size:13px;letter-spacing:.3px;
 }
 .btn.secondary{background:transparent;border:1px solid #2a3340;color:var(--text);}
@@ -174,7 +191,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   padding:8px 16px;border-radius:20px;background:var(--surface2);color:var(--muted);
   font-size:13px;cursor:pointer;font-weight:600;
 }
-.subtab.active{background:var(--amber);color:#1a1300;}
+.subtab.active{background:var(--amber);color:#FFFFFF;}
 .note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-left:3px solid var(--teal);border-radius:4px;}
 .empty{color:var(--muted);font-size:13px;padding:20px 0;}
 
@@ -341,12 +358,17 @@ function tileHTML({title, sub, badge, thumb, onclickAttr}){
 /* ===================== HOME ===================== */
 function renderHome(){
   const recent = state.history;
+  const lastWatched = recent[0];
   viewEl.innerHTML = `
-    <div class="hero">
+    <div class="hero hero-netflix">
       <div>
         <div class="tag">Votre hub personnel</div>
         <h1>Toutes vos sources, un seul écran</h1>
-        <p>YouTube, Molotov TV et vos flux IPTV (Xtream Codes, Stalker Portal, M3U) réunis dans une interface façon Android TV. Configurez vos sources dans l'onglet <strong>Sources</strong>.</p>
+        <p>YouTube, Molotov TV et vos flux IPTV (Xtream Codes, Stalker Portal, M3U) réunis dans une interface façon Netflix. Configurez vos sources dans l'onglet <strong>Sources</strong>.</p>
+        <div class="hero-actions">
+          ${lastWatched ? `<button class="hero-btn hero-btn-primary" id="heroPlay">▶ Lecture</button>` : ''}
+          <button class="hero-btn hero-btn-secondary" id="heroInfo">ℹ Plus d'infos</button>
+        </div>
       </div>
     </div>
     <div class="row">
@@ -369,6 +391,10 @@ function renderHome(){
     const item = JSON.parse(decodeURIComponent(t.dataset.play));
     playItem(item);
   }));
+  const heroPlay = document.getElementById('heroPlay');
+  if(heroPlay) heroPlay.addEventListener('click', ()=> playItem(lastWatched));
+  const heroInfo = document.getElementById('heroInfo');
+  if(heroInfo) heroInfo.addEventListener('click', ()=> switchView('sources'));
 }
 
 /* ===================== YOUTUBE ===================== */
