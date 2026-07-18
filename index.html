@@ -858,6 +858,1525 @@ function stalkerPanel(){
         <div class="row-title">${st.vodCategoryView.title}</div>
         <div class="grid" id="stVodGrid">
           ${st.vodItems?.length ? st.vodItems.map((v,i)=>tileHTML({title:v.name, sub:'Film', badge:'VOD', thumb:v.thumb, onclickAttr:`data-vodidx="${i}"`})).join('') : '<div class="empty">Chargement...</div>'}
+        </div>
+        ${st.vodItems && st.vodCategoryView.totalItems && st.vodItems.length < st.vodCategoryView.totalItems ?
+          `<button class="btn secondary" id="stVodLoadMore" style="margin-top:14px;">Charger plus (${st.vodItems.length}/${st.vodCategoryView.totalItems})</button>` : ''}` : ''}
+    </div>
+    <div class="panel">
+      <h3>📺 Séries</h3>
+      ${!st.seriesCategories ? `<button class="btn" id="stLoadSeries">Charger les catégories Séries</button>` : ''}
+      <div class="note" id="stSeriesStatus" style="display:none;"></div>
+      ${st.seriesCategories && !st.seriesCategoryView ? `
+        <div class="grid" style="margin-top:14px;">
+          ${st.seriesCategories.map((c,i)=>tileHTML({title:c.title, sub:'Catégorie', badge:'Series', onclickAttr:`data-seriescat="${i}"`})).join('')}
+        </div>` : ''}
+      ${st.seriesCategoryView && !st.episodeView ? `
+        <button class="btn secondary" id="stSeriesBack" style="margin:14px 0;">← Retour aux catégories</button>
+        <div class="row-title">${st.seriesCategoryView.title}</div>
+        <div class="grid" id="stSeriesGrid">
+          ${st.seriesItems?.length ? st.seriesItems.map((v,i)=>tileHTML({title:v.name, sub:'Série', badge:'Series', thumb:v.thumb, onclickAttr:`data-seriesidx="${i}"`})).join('') : '<div class="empty">Chargement...</div>'}
+        </div>
+        ${st.seriesItems && st.seriesCategoryView.totalItems && st.seriesItems.length < st.seriesCategoryView.totalItems ?
+          `<button class="btn secondary" id="stSeriesLoadMore" style="margin-top:14px;">Charger plus (${st.seriesItems.length}/${st.seriesCategoryView.totalItems})</button>` : ''}` : ''}
+      ${st.episodeView ? `
+        <button class="btn secondary" id="stEpisodeBack" style="margin:14px 0;">← Retour aux séries</button>
+        <div class="row-title">Épisodes — ${st.episodeView.title}</div>
+        <div class="tiles">
+          ${st.episodeView.episodes.map(ep=>`<div class="tile" tabindex="0" data-epnum="${ep}" style="flex:0 0 90px;height:70px;display:flex;align-items:center;justify-content:center;">
+            <div class="tile-body" style="position:static;"><div class="tile-title">Ép. ${ep}</div></div>
+          </div>`).join('')}
+        </div>
+      ` : ''}
+    </div>` : ''}`;
+}
+async function stalkerApiCall(action, extraParams){
+  const st = state.stalker;
+  const cookieMac = `mac=${encodeURIComponent(st.mac)}`;
+  const url = `${st.portal}/portal.php?${extraParams}&JsHttpRequest=1-xml`;
+  const res = await proxied(url, { 'Authorization': 'Bearer '+st.token, 'Cookie': cookieMac });
+  const text = await res.text();
+  if(!text || !text.trim()) throw new Error(`Réponse vide pour "${action}" (session expirée ou CORS).`);
+  return JSON.parse(text);
+}
+
+async function loadStalkerVodCategories(){
+  const statusEl = document.getElementById('stVodStatus');
+  statusEl.style.display='block'; statusEl.textContent = 'Chargement des catégories...';
+  try{
+    const data = await stalkerApiCall('vod_categories', 'type=vod&action=get_categories');
+    state.stalker.vodCategories = (data?.js||[]).map(c=>({id:c.id, title:c.title}));
+    statusEl.textContent = '';
+    renderIptv('stalker');
+  }catch(e){ statusEl.textContent = 'Erreur : '+e.message; }
+}
+async function loadStalkerVodItems(catId, catTitle, page){
+  page = page || 1;
+  const statusEl = document.getElementById('stVodStatus');
+  if(page === 1){
+    state.stalker.vodCategoryView = {id:catId, title:catTitle, page:1, totalItems:null, maxPageItems:null};
+    state.stalker.vodItems = null;
+    renderIptv('stalker'); attachFocusNav();
+  }
+  try{
+    const data = await stalkerApiCall('vod_items', `type=vod&action=get_ordered_list&category_id=${catId}&p=${page}&JsHttpRequest=1-xml`);
+    const items = (data?.js?.data || []).map(v=>({ name:v.name, cmd:v.cmd, thumb:v.screenshot_uri || v.pic }));
+    state.stalker.vodItems = page === 1 ? items : (state.stalker.vodItems||[]).concat(items);
+    state.stalker.vodCategoryView.page = page;
+    state.stalker.vodCategoryView.totalItems = data?.js?.total_items ?? state.stalker.vodItems.length;
+    state.stalker.vodCategoryView.maxPageItems = data?.js?.max_page_items || items.length || 14;
+    renderIptv('stalker'); attachFocusNav();
+  }catch(e){
+    state.stalker.vodItems = state.stalker.vodItems || [];
+    renderIptv('stalker'); attachFocusNav();
+    const s = document.getElementById('stVodStatus');
+    if(s){ s.style.display='block'; s.textContent = 'Erreur : '+e.message; }
+  }
+}
+async function playStalkerVod(item){
+  const st = state.stalker;
+  const cookieMac = `mac=${encodeURIComponent(st.mac)}`;
+  const url = `${st.portal}/portal.php?type=vod&action=create_link&cmd=${encodeURIComponent(item.cmd)}&JsHttpRequest=1-xml`;
+  const res = await proxied(url, { 'Authorization': 'Bearer '+st.token, 'Cookie': cookieMac });
+  const text = await res.text();
+  console.log('[StreamHub] VOD create_link raw response:', text);
+  if(!text || !text.trim()) throw new Error('Réponse vide du portail pour ce film/série.');
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ throw new Error('Réponse non-JSON reçue : '+text.slice(0,150)); }
+  let streamUrl = (data?.js?.cmd || '').replace(/^ffmpeg\s+/i,'').trim();
+  if(!streamUrl){
+    throw new Error('Aucune URL de flux dans la réponse. Réponse brute : '+JSON.stringify(data).slice(0,200));
+  }
+  return streamUrl;
+}
+
+async function loadStalkerSeriesCategories(){
+  const statusEl = document.getElementById('stSeriesStatus');
+  statusEl.style.display='block'; statusEl.textContent = 'Chargement des catégories...';
+  try{
+    const data = await stalkerApiCall('series_categories', 'type=series&action=get_categories');
+    state.stalker.seriesCategories = (data?.js||[]).map(c=>({id:c.id, title:c.title}));
+    statusEl.textContent = '';
+    renderIptv('stalker');
+  }catch(e){ statusEl.textContent = 'Erreur : '+e.message; }
+}
+async function loadStalkerSeriesItems(catId, catTitle, page){
+  page = page || 1;
+  const statusEl = document.getElementById('stSeriesStatus');
+  if(page === 1){
+    state.stalker.seriesCategoryView = {id:catId, title:catTitle, page:1, totalItems:null, maxPageItems:null};
+    state.stalker.seriesItems = null;
+    renderIptv('stalker'); attachFocusNav();
+  }
+  try{
+    const data = await stalkerApiCall('series_items', `type=series&action=get_ordered_list&category_id=${catId}&p=${page}&JsHttpRequest=1-xml`);
+    const items = (data?.js?.data || []).map(v=>({ name:v.name, cmd:v.cmd, thumb:v.screenshot_uri || v.pic, series: v.series || [] }));
+    state.stalker.seriesItems = page === 1 ? items : (state.stalker.seriesItems||[]).concat(items);
+    state.stalker.seriesCategoryView.page = page;
+    state.stalker.seriesCategoryView.totalItems = data?.js?.total_items ?? state.stalker.seriesItems.length;
+    state.stalker.seriesCategoryView.maxPageItems = data?.js?.max_page_items || items.length || 14;
+    renderIptv('stalker'); attachFocusNav();
+  }catch(e){
+    state.stalker.seriesItems = state.stalker.seriesItems || [];
+    renderIptv('stalker'); attachFocusNav();
+    const s = document.getElementById('stSeriesStatus');
+    if(s){ s.style.display='block'; s.textContent = 'Erreur : '+e.message; }
+  }
+}
+async function playStalkerSeriesEpisode(item, episodeNum){
+  const st = state.stalker;
+  const cookieMac = `mac=${encodeURIComponent(st.mac)}`;
+  const url = `${st.portal}/portal.php?type=series&action=create_link&cmd=${encodeURIComponent(item.cmd)}&series=${episodeNum}&JsHttpRequest=1-xml`;
+  const res = await proxied(url, { 'Authorization': 'Bearer '+st.token, 'Cookie': cookieMac });
+  const text = await res.text();
+  const data = JSON.parse(text);
+  let streamUrl = (data?.js?.cmd || '').replace(/^ffmpeg\s+/i,'').trim();
+  return streamUrl;
+}
+
+function extractStalkerChannelId(cmd){
+  const m = (cmd||'').match(/\/ch\/(\d+)_?/) || (cmd||'').match(/stream=(\d+)/);
+  return m ? m[1] : null;
+}
+function exportStalkerAsM3U(){
+  const st = state.stalker;
+  const statusEl = document.getElementById('stExportStatus');
+  if(!st.portal || !st.mac){ if(statusEl){statusEl.style.display='block';statusEl.textContent='Connecte-toi d\'abord.';} return; }
+  const lines = ['#EXTM3U'];
+  let count = 0;
+  for(const c of st.channels){
+    const id = extractStalkerChannelId(c.cmd);
+    if(!id) continue;
+    const url = `${st.portal}/play/live.php?mac=${encodeURIComponent(st.mac)}&stream=${id}&extension=m3u8`;
+    lines.push(`#EXTINF:-1,${c.name}`);
+    lines.push(url);
+    count++;
+  }
+  const blob = new Blob([lines.join('\n')], {type:'application/vnd.apple.mpegurl'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'stalker-export.m3u8';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `${count} chaînes exportées. Teste le fichier dans VLC pour confirmer si ce motif d'URL fonctionne sur ton portail.`; }
+}
+async function resolveStalkerStreamUrl(channel){
+  const st = state.stalker;
+  if(!st.portal || !st.token) throw new Error('Session Stalker expirée, reconnecte-toi.');
+  const cookieMac = `mac=${encodeURIComponent(st.mac)}`;
+  const url = `${st.portal}/portal.php?type=itv&action=create_link&cmd=${encodeURIComponent(channel.cmd)}&JsHttpRequest=1-xml`;
+  const res = await proxied(url, { 'Authorization': 'Bearer '+st.token, 'Cookie': cookieMac });
+  const text = await res.text();
+  if(!text || !text.trim()) throw new Error('Réponse vide du portail (CORS ou session expirée).');
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ throw new Error('Réponse non-JSON reçue.'); }
+  let streamUrl = data?.js?.cmd || '';
+  streamUrl = streamUrl.replace(/^ffmpeg\s+/i, '').trim();
+  if(!streamUrl) throw new Error('Aucune URL de flux renvoyée par le portail.');
+  return streamUrl;
+}
+
+async function stalkerConnect(){
+  const portal = document.getElementById('stPortal').value.replace(/\/portal\.php.*$/,'');
+  const mac = document.getElementById('stMac').value;
+  const proxy = document.getElementById('stProxy').value.trim();
+  const statusEl = document.getElementById('stStatus');
+  statusEl.style.display='block'; statusEl.textContent='Handshake en cours...';
+  state.proxy = proxy; save();
+
+  async function safeJson(res, step){
+    const text = await res.text();
+    if(!text || !text.trim()){
+      throw new Error(`Réponse vide reçue à l'étape "${step}" (status ${res.status}). ${proxy? "Même via le proxy, rien n'est revenu — vérifie l'URL du portail et la MAC." : "Le portail bloque probablement les requêtes cross-origin (CORS). Renseigne un proxy ci-dessus."}`);
+    }
+    try{ return JSON.parse(text); }
+    catch(e){ throw new Error(`Réponse non-JSON reçue à l'étape "${step}" (status ${res.status}). Extrait: ${text.slice(0,120)}`); }
+  }
+
+  try{
+    const base = portal;
+    const cookieMac = `mac=${encodeURIComponent(mac)}`;
+    let hsRes;
+    try{
+      hsRes = await proxied(`${base}/portal.php?type=stb&action=handshake&JsHttpRequest=1-xml`, { 'Cookie': cookieMac });
+    }catch(networkErr){
+      throw new Error(`La requête réseau a échoué avant même d'atteindre le serveur (CORS, mixed-content http/https, ou portail injoignable). ${proxy? "Le proxy lui-même est peut-être injoignable — vérifie son URL." : "Renseigne un proxy CORS ci-dessus (voir onglet Sources)."} Détail : ${networkErr.message}`);
+    }
+    const hsData = await safeJson(hsRes, 'handshake');
+    const token = hsData?.js?.token;
+    if(!token){
+      const raw = JSON.stringify(hsData).slice(0,200);
+      throw new Error(`Handshake reçu mais aucun token dans la réponse. Réponse brute : ${raw} — si le proxy utilisé ne transmet pas les en-têtes (Cookie avec la MAC), le portail répond sans authentifier la session. Essaie sans proxy si ton portail est en https://, ou utilise ton propre proxy (voir onglet Sources, option avancée).`);
+    }
+
+    const chRes = await proxied(`${base}/portal.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml`, { 'Authorization': 'Bearer '+token, 'Cookie': cookieMac });
+    const chData = await safeJson(chRes, 'get_all_channels');
+    const list = (chData?.js?.data || []).map(c=>({ name: c.name, id: c.id, cmd: c.cmd, genreId: c.tv_genre_id }));
+
+    let genres = [];
+    try{
+      const genRes = await proxied(`${base}/portal.php?type=itv&action=get_genres&JsHttpRequest=1-xml`, { 'Authorization': 'Bearer '+token, 'Cookie': cookieMac });
+      const genData = await safeJson(genRes, 'get_genres');
+      genres = (genData?.js || []).map(g=>({id:g.id, title:g.title}));
+    }catch(e){ /* les genres sont un bonus, on continue sans si ça échoue */ }
+
+    state.stalker = { portal, mac, channels: list, itvCategories: genres, token };
+    save();
+    statusEl.textContent = list.length + ' chaînes récupérées.' + (proxy? ' (via proxy)':'');
+    renderIptv('stalker');
+  }catch(e){
+    statusEl.textContent = "Échec de connexion Stalker Portal : " + e.message;
+  }
+}
+
+function bindIptvEvents(){
+  const m3uLoadBtn = document.getElementById('m3uLoadUrl');
+  if(m3uLoadBtn) m3uLoadBtn.addEventListener('click', async ()=>{
+    const url = document.getElementById('m3uUrl').value;
+    const statusEl = document.getElementById('m3uStatus');
+    statusEl.textContent = 'Chargement...';
+    try{
+      const res = await fetch(url);
+      const text = await res.text();
+      const channels = parseM3U(text);
+      state.m3u = {url, raw:text, channels};
+      save();
+      renderIptv('m3u');
+    }catch(e){
+      statusEl.textContent = 'Impossible de charger cette URL (CORS ou lien invalide) : '+e.message;
+    }
+  });
+  const m3uFile = document.getElementById('m3uFile');
+  if(m3uFile) m3uFile.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const channels = parseM3U(reader.result);
+      state.m3u = {url:'', raw:reader.result, channels};
+      save();
+      renderIptv('m3u');
+    };
+    reader.readAsText(file);
+  });
+  viewEl.querySelectorAll('#m3uGrid .tile[data-idx]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const c = state.m3u.channels[t.dataset.idx];
+      openVideoPlayer(c.name, c.url);
+      pushHistory({title:c.name, source:'M3U', type:'hls', url:c.url});
+    });
+  });
+
+  const xBtn = document.getElementById('xConnect');
+  if(xBtn) xBtn.addEventListener('click', xtreamConnect);
+  viewEl.querySelectorAll('#xGrid .tile[data-idx]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const s = state.xtream.streams[t.dataset.idx];
+      const url = `${state.xtream.server}/live/${state.xtream.username}/${state.xtream.password}/${s.id}.m3u8`;
+      openVideoPlayer(s.name, url, 'Xtream', !!(state.proxy||'').trim());
+      pushHistory({title:s.name, source:'Xtream', type:'hls', url});
+    });
+  });
+
+  const stBtn = document.getElementById('stConnect');
+  const stExportBtn = document.getElementById('stExportM3U');
+  if(stExportBtn) stExportBtn.addEventListener('click', exportStalkerAsM3U);
+
+  const stLoadVod = document.getElementById('stLoadVod');
+  if(stLoadVod) stLoadVod.addEventListener('click', loadStalkerVodCategories);
+  viewEl.querySelectorAll('[data-vodcat]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const cat = state.stalker.vodCategories[t.dataset.vodcat];
+      loadStalkerVodItems(cat.id, cat.title);
+    });
+  });
+  const stVodBack = document.getElementById('stVodBack');
+  if(stVodBack) stVodBack.addEventListener('click', ()=>{
+    state.stalker.vodCategoryView = null;
+    state.stalker.vodItems = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
+  const stVodLoadMore = document.getElementById('stVodLoadMore');
+  if(stVodLoadMore) stVodLoadMore.addEventListener('click', ()=>{
+    const v = state.stalker.vodCategoryView;
+    loadStalkerVodItems(v.id, v.title, (v.page||1)+1);
+  });
+  viewEl.querySelectorAll('#stVodGrid .tile[data-vodidx]').forEach(t=>{
+    t.addEventListener('click', async ()=>{
+      const item = state.stalker.vodItems[t.dataset.vodidx];
+      const statusEl = document.getElementById('stVodStatus');
+      if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution de "${item.name}"...`; }
+      try{
+        const url = await playStalkerVod(item);
+        if(statusEl) statusEl.textContent = `URL résolue : ${url}`;
+        console.log('[StreamHub] VOD stream URL:', url);
+        openVideoPlayer(item.name, url, 'Stalker VOD', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
+        pushHistory({title:item.name, source:'Stalker', type:'hls', url});
+      }catch(e){ if(statusEl) statusEl.textContent = 'Erreur : '+e.message; }
+    });
+  });
+
+  const stLoadSeries = document.getElementById('stLoadSeries');
+  if(stLoadSeries) stLoadSeries.addEventListener('click', loadStalkerSeriesCategories);
+  viewEl.querySelectorAll('[data-seriescat]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const cat = state.stalker.seriesCategories[t.dataset.seriescat];
+      loadStalkerSeriesItems(cat.id, cat.title);
+    });
+  });
+  const stSeriesBack = document.getElementById('stSeriesBack');
+  if(stSeriesBack) stSeriesBack.addEventListener('click', ()=>{
+    state.stalker.seriesCategoryView = null;
+    state.stalker.seriesItems = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
+  const stSeriesLoadMore = document.getElementById('stSeriesLoadMore');
+  if(stSeriesLoadMore) stSeriesLoadMore.addEventListener('click', ()=>{
+    const v = state.stalker.seriesCategoryView;
+    loadStalkerSeriesItems(v.id, v.title, (v.page||1)+1);
+  });
+  const stEpisodeBack = document.getElementById('stEpisodeBack');
+  if(stEpisodeBack) stEpisodeBack.addEventListener('click', ()=>{
+    state.stalker.episodeView = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
+  viewEl.querySelectorAll('#stSeriesGrid .tile[data-seriesidx]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const item = state.stalker.seriesItems[t.dataset.seriesidx];
+      const episodes = item.series && item.series.length ? item.series : [1];
+      state.stalker.episodeView = {title:item.name, episodes, item};
+      renderIptv('stalker'); attachFocusNav();
+    });
+  });
+  viewEl.querySelectorAll('.tile[data-epnum]').forEach(t=>{
+    t.addEventListener('click', async ()=>{
+      const ep = t.dataset.epnum;
+      const item = state.stalker.episodeView.item;
+      const statusEl = document.getElementById('stSeriesStatus');
+      if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution de l'épisode ${ep}...`; }
+      try{
+        const url = await playStalkerSeriesEpisode(item, ep);
+        openVideoPlayer(`${item.name} — Ép. ${ep}`, url, 'Stalker Séries', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
+        pushHistory({title:`${item.name} — Ép. ${ep}`, source:'Stalker', type:'hls', url});
+        if(statusEl) statusEl.textContent = '';
+      }catch(e){ if(statusEl) statusEl.textContent = 'Erreur : '+e.message; }
+    });
+  });
+  if(stBtn) stBtn.addEventListener('click', stalkerConnect);
+  viewEl.querySelectorAll('[data-itvcat]').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      const val = t.dataset.itvcat;
+      const st = state.stalker;
+      if(val === 'all'){
+        st.itvCategoryView = {title:'Toutes les chaînes', channels: st.channels};
+      } else {
+        const cat = st.itvCategories[val];
+        st.itvCategoryView = {title:cat.title, channels: st.channels.filter(ch=>String(ch.genreId)===String(cat.id))};
+      }
+      renderIptv('stalker'); attachFocusNav();
+    });
+  });
+  const stItvBack = document.getElementById('stItvBack');
+  if(stItvBack) stItvBack.addEventListener('click', ()=>{
+    state.stalker.itvCategoryView = null;
+    renderIptv('stalker'); attachFocusNav();
+  });
+
+  viewEl.querySelectorAll('#stGrid .tile[data-idx]').forEach(t=>{
+    t.addEventListener('click', async ()=>{
+      const c = state.stalker.itvCategoryView.channels[t.dataset.idx];
+      const statusEl = document.getElementById('stStatus');
+      if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Résolution du flux pour "${c.name}"...`; }
+      try{
+        const url = await resolveStalkerStreamUrl(c);
+        if(statusEl) statusEl.textContent = `URL résolue : ${url}`;
+        console.log('[StreamHub] Stalker stream URL:', url);
+        openVideoPlayer(c.name, url, 'Stalker', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
+        pushHistory({title:c.name, source:'Stalker', type:'hls', url});
+        if(statusEl) statusEl.textContent = '';
+      }catch(e){
+        if(statusEl) statusEl.textContent = "Impossible de résoudre le flux : "+e.message;
+      }
+    });
+  });
+}
+
+/* ===================== SOURCES / SETTINGS ===================== */
+function renderSources(){
+  viewEl.innerHTML = `
+    <div class="panel">
+      <h3>Mes sources configurées</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;">StreamHub se connecte directement à vos propres accès — playlist M3U, identifiants Xtream Codes, portail Stalker — sans passer par une interface tierce. Toutes les informations restent stockées localement dans votre navigateur (localStorage), rien n'est envoyé à un serveur externe.</p>
+    </div>
+    <div class="panel">
+      <h3>Mes abonnements (connexion Google)</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
+        Pour retrouver les vidéos de tes abonnements. Nécessite un Client ID OAuth, et que l'appli soit ouverte depuis l'URL exacte enregistrée comme "origine JavaScript autorisée" (pas un fichier local).
+      </p>
+      <div class="field"><label>Client ID Google OAuth</label><input id="googleClientIdInput" value="${state.googleClientId||''}" placeholder="xxxxxxxx.apps.googleusercontent.com"></div>
+      <button class="btn" id="saveGoogleClientId">Enregistrer</button>
+      <div class="note">Ce Client ID n'est pas un secret (visible côté client par nature) — ne partage jamais en revanche un "Client Secret", inutile ici.</div>
+    </div>
+    <div class="panel">
+      <h3>Recherche YouTube</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
+        Une clé API distincte (pas de connexion compte) pour chercher et regarder n'importe quelle vidéo publique.
+      </p>
+      <div class="field"><label>Clé API YouTube</label><input id="youtubeApiKeyInput" value="${state.youtubeApiKey||''}" placeholder="AIzaSy..."></div>
+      <button class="btn" id="saveYoutubeApiKey">Enregistrer</button>
+      <div class="note">Créer une clé : Google Cloud Console → APIs & Services → Identifiants → Créer des identifiants → Clé API.</div>
+    </div>
+    <div class="panel">
+      <h3>Proxy CORS (pour Xtream / Stalker)</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
+        Les navigateurs bloquent les appels directs vers la plupart des panels IPTV (CORS). Solution la plus simple : coller un proxy public déjà en ligne, sans rien déployer.
+      </p>
+      <div class="field"><label>URL du proxy</label><input id="proxyInput" value="${state.proxy||''}" placeholder="https://corsproxy.io/?url="></div>
+      <button class="btn" id="saveProxy">Enregistrer</button>
+      <div class="note">Option simple (recommandée) : colle <code>https://corsproxy.io/?url=</code> — fonctionne surtout pour Xtream Codes. <br><br>Option avancée : si tu préfères ton propre serveur (plus fiable, notamment pour Stalker Portal), le dossier <code>streamhub-proxy</code> fourni précédemment peut être déployé sur Netlify via un compte connecté (Sites → Add new site → Deploy manually), pas via le glisser-déposer anonyme.</div>
+    </div>
+    <div class="panel">
+      <h3>Playlist M3U</h3>
+      <div class="field"><label>URL actuelle</label><input value="${state.m3u.url||'(aucune)'}" disabled></div>
+      <div class="field"><label>Chaînes chargées</label><input value="${(state.m3u.channels||[]).length}" disabled></div>
+    </div>
+    <div class="panel">
+      <h3>Xtream Codes</h3>
+      <div class="field"><label>Serveur</label><input value="${state.xtream.server||'(aucun)'}" disabled></div>
+    </div>
+    <div class="panel">
+      <h3>Stalker Portal</h3>
+      <div class="field"><label>Portail</label><input value="${state.stalker.portal||'(aucun)'}" disabled></div>
+      <div class="field"><label>MAC</label><input value="${state.stalker.mac||'(aucune)'}" disabled></div>
+    </div>
+    <button class="btn danger" id="resetAll">Réinitialiser toutes les sources</button>
+  `;
+  document.getElementById('saveGoogleClientId').addEventListener('click',()=>{
+    state.googleClientId = document.getElementById('googleClientIdInput').value.trim();
+    save();
+    gTokenClient = null; // force re-init avec le nouveau Client ID
+    alert('Client ID enregistré.');
+  });
+  document.getElementById('saveYoutubeApiKey').addEventListener('click',()=>{
+    state.youtubeApiKey = document.getElementById('youtubeApiKeyInput').value.trim();
+    save();
+    alert('Clé API enregistrée.');
+  });
+  document.getElementById('saveProxy').addEventListener('click',()=>{
+    state.proxy = document.getElementById('proxyInput').value.trim();
+    save();
+    alert('Proxy enregistré.');
+  });
+  document.getElementById('resetAll').addEventListener('click',()=>{
+    if(confirm('Effacer toutes les sources et l\'historique ?')){
+      localStorage.clear();
+      state = {youtube:[],m3u:{url:'',raw:'',channels:[]},xtream:{server:'',username:'',password:'',categories:[],streams:[]},stalker:{portal:'',mac:'',channels:[]},history:[],proxy:'',view:'sources'};
+      render();
+    }
+  });
+}
+
+/* ===================== PLAYER (vue intégrée plein écran) ===================== */
+let hlsInstance = null;
+let playerData = null; // {title, sub, kind:'video'|'iframe', src}
+let previousView = 'home';
+
+function openVideoPlayer(title, url, sub, forceProxy, streamHeaders){
+  if(!url){ alert('URL de flux introuvable.'); return; }
+  playerData = {title, sub: sub||'', kind:'video', src:url, forceProxy: !!forceProxy, headers: streamHeaders||null};
+  goToPlayerView();
+}
+function openFramePlayer(title, url, sub){
+  playerData = {title, sub: sub||'', kind:'iframe', src:url};
+  goToPlayerView();
+}
+function goToPlayerView(){
+  if(state.view !== 'player') previousView = state.view;
+  state.view = 'player';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('viewTitle').textContent = 'Lecture';
+  renderPlayerView();
+  attachFocusNav();
+}
+function backFromPlayer(){
+  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+  if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
+  playerData = null;
+  switchView(previousView);
+}
+function renderPlayerView(){
+  const p = playerData;
+  viewEl.innerHTML = `
+    <div class="player-page">
+      <div class="player-info">
+        <div style="display:flex;align-items:center;">
+          <button class="player-back" id="playerBackBtn">← Retour</button>
+          <div>
+            <h2>${p.title}</h2>
+            ${p.sub? `<div class="sub">${p.sub}</div>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="player-stage" id="playerStage"></div>
+      <div class="player-status-line" id="playerStatusLine">${p.kind==='video' ? 'Chargement du flux...' : ''}</div>
+      <div class="player-status-line" style="opacity:.5;word-break:break-all;">URL : ${p.src}</div>
+    </div>`;
+  document.getElementById('playerBackBtn').addEventListener('click', backFromPlayer);
+
+  const stage = document.getElementById('playerStage');
+  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+
+  if(p.kind === 'iframe'){
+    const frame = document.createElement('iframe');
+    frame.src = p.src;
+    frame.allow = 'autoplay; encrypted-media';
+    frame.allowFullscreen = true;
+    stage.appendChild(frame);
+    return;
+  }
+
+  const video = document.createElement('video');
+  video.id = 'videoPlayer';
+  video.controls = true;
+  video.autoplay = true;
+  stage.appendChild(video);
+  loadVideoSource(video, p.src, !!p.forceProxy, p.headers);
+}
+
+let mpegtsInstance = null;
+
+function loadVideoSource(video, url, viaProxy, streamHeaders){
+  const statusEl = document.getElementById('playerStatusLine');
+  const isDirectFile = /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+  // Beaucoup de portails Stalker/Ministra diffusent en MPEG-TS brut continu
+  // (ex: "live.php?...&extension=ts") plutôt qu'en HLS segmenté (.m3u8).
+  // Ni <video> natif ni HLS.js ne savent lire ça : il faut mpegts.js (MSE).
+  const isRawMpegTs = /extension=ts\b/i.test(url) || /\.ts(\?|$)/i.test(url);
+  const actualUrl = viaProxy ? buildProxiedUrl(url, streamHeaders) : url;
+
+  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
+  if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
+
+  let settled = false;
+  const timeout = setTimeout(()=>{
+    if(!settled && statusEl) showRetryOptions(video, url, 'Le flux met trop de temps à démarrer (CORS probable ou serveur injoignable).');
+  }, 9000);
+
+  video.onerror = ()=>{
+    clearTimeout(timeout);
+    if(!settled) showRetryOptions(video, url, "Format non lisible directement par le navigateur, ou flux inaccessible.");
+  };
+  video.oncanplay = ()=>{ settled = true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; };
+
+  if(isRawMpegTs && window.mpegts && mpegts.getFeatureList().mseLivePlayback){
+    if(statusEl) statusEl.textContent = 'Flux MPEG-TS détecté, lecture via mpegts.js...';
+    mpegtsInstance = mpegts.createPlayer({ type:'mpegts', isLive:true, url: actualUrl });
+    mpegtsInstance.attachMediaElement(video);
+    mpegtsInstance.on(mpegts.Events.ERROR, (type, detail)=>{
+      clearTimeout(timeout);
+      if(!settled) showRetryOptions(video, url, `Erreur mpegts.js (${type}: ${detail}) — CORS probable ou flux hors-ligne.`);
+    });
+    mpegtsInstance.load();
+    mpegtsInstance.play().then(()=>{ settled=true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; }).catch(()=>{});
+  } else if(!isDirectFile && !isRawMpegTs && window.Hls && Hls.isSupported()){
+    hlsInstance = new Hls();
+    hlsInstance.loadSource(actualUrl);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, ()=>{ settled = true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; });
+    hlsInstance.on(Hls.Events.ERROR, (e,data)=>{
+      if(data.fatal){
+        clearTimeout(timeout);
+        if(!settled) showRetryOptions(video, url, "Impossible de charger ce flux avec HLS.js (CORS, ou format non standard) : "+data.details);
+      }
+    });
+  } else {
+    video.src = actualUrl;
+    video.play().catch(()=>{});
+  }
+}
+
+function buildProxiedUrl(url, headers){
+  const proxy = (state.proxy||'').trim();
+  if(!proxy) return url;
+  if(proxy.endsWith('=') || proxy.endsWith('/')) return proxy + encodeURIComponent(url);
+  const p = new URL(proxy);
+  p.searchParams.set('url', url);
+  if(headers) p.searchParams.set('headers', JSON.stringify(headers));
+  return p.toString();
+}
+
+function showRetryOptions(video, originalUrl, message){
+  const statusEl = document.getElementById('playerStatusLine');
+  if(!statusEl) return;
+  const hasProxy = !!(state.proxy||'').trim();
+  statusEl.innerHTML = `
+    <span style="color:var(--danger);">${message}</span>
+    ${hasProxy ? ` — <button class="btn secondary" id="retryProxyBtn" style="padding:4px 10px;font-size:11px;margin-left:6px;">Réessayer via le proxy</button>` : ''}
+  `;
+  const retryBtn = document.getElementById('retryProxyBtn');
+  if(retryBtn) retryBtn.addEventListener('click', ()=>{
+    statusEl.textContent = 'Nouvel essai via le proxy...';
+    loadVideoSource(video, originalUrl, true, playerData?.headers);
+  });
+}
+function playItem(item){
+  if(item.type==='youtube') openFramePlayer(item.title, `https://www.youtube.com/embed/${item.id}?autoplay=1`, item.source);
+  else openVideoPlayer(item.title, item.url, item.source);
+}
+
+/* ===================== D-PAD / KEYBOARD NAVIGATION ===================== */
+function attachFocusNav(){
+  const focusables = Array.from(document.querySelectorAll('.tile, .nav-item, .subtab, input, .btn, select'));
+  focusables.forEach(el=>{
+    el.addEventListener('mouseenter', ()=> setFocus(el));
+    el.addEventListener('keydown', e=>{ if(e.key==='Enter') el.click(); });
+  });
+  // Focus le premier élément pertinent de la vue si rien n'est focus
+  if(!document.activeElement || document.activeElement===document.body){
+    const first = document.querySelector('.view .tile, .view .btn');
+    if(first) setFocus(first);
+  }
+}
+function setFocus(el){
+  document.querySelectorAll('.focused').forEach(f=>f.classList.remove('focused'));
+  el.classList.add('focused');
+  el.focus({preventScroll:false});
+  el.scrollIntoView({block:'nearest', inline:'nearest', behavior:'smooth'});
+}
+function spatialNav(dir){
+  const current = document.querySelector('.focused') || document.activeElement;
+  const candidates = Array.from(document.querySelectorAll('.tile, .nav-item, .subtab, input, .btn'))
+    .filter(el => el.offsetParent !== null);
+  if(!current || !candidates.length) return;
+  const cRect = current.getBoundingClientRect();
+  const cx = cRect.left + cRect.width/2, cy = cRect.top + cRect.height/2;
+  let best = null, bestScore = Infinity;
+  for(const el of candidates){
+    if(el === current) continue;
+    const r = el.getBoundingClientRect();
+    const ex = r.left + r.width/2, ey = r.top + r.height/2;
+    const dx = ex - cx, dy = ey - cy;
+    let primary, ortho, aligned;
+    if(dir==='right'){ if(dx<=4) continue; primary=dx; ortho=Math.abs(dy); }
+    else if(dir==='left'){ if(dx>=-4) continue; primary=-dx; ortho=Math.abs(dy); }
+    else if(dir==='down'){ if(dy<=4) continue; primary=dy; ortho=Math.abs(dx); }
+    else if(dir==='up'){ if(dy>=-4) continue; primary=-dy; ortho=Math.abs(dx); }
+    const score = primary + ortho*2.2;
+    if(score < bestScore){ bestScore = score; best = el; }
+  }
+  if(best) setFocus(best);
+}
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){ if(state.view==='player') backFromPlayer(); return; }
+  const tag = document.activeElement?.tagName;
+  if(tag==='INPUT' || tag==='TEXTAREA') return; // laisse taper du texte normalement
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
+    e.preventDefault();
+    spatialNav({ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key]);
+  }
+});
+
+/* ===================== GLOBAL SEARCH (simple filter across loaded sources) ===================== */
+document.getElementById('globalSearch').addEventListener('input', e=>{
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.tile .tile-title').forEach(t=>{
+    const tile = t.closest('.tile');
+    if(!tile) return;
+    tile.style.display = t.textContent.toLowerCase().includes(q) ? '' : (q? 'none':'');
+  });
+});
+
+/* ===================== INIT ===================== */
+render();
+</script>
+</body>
+</html>
+  border-right:1px solid rgba(255,255,255,0.06);
+  display:flex;flex-direction:column;align-items:center;
+  padding:22px 0;
+  flex-shrink:0;
+  transition:width .25s ease;
+  z-index:20;
+}
+.sidebar:hover{width:210px;}
+.brand{
+  color:var(--amber);
+  font-weight:700;
+  font-size:20px;
+  letter-spacing:.5px;
+  margin-bottom:34px;
+  white-space:nowrap;
+  overflow:hidden;
+  width:100%;
+  text-align:center;
+}
+.sidebar:hover .brand{text-align:left;padding-left:22px;}
+.nav-item{
+  width:100%;
+  display:flex;align-items:center;gap:14px;
+  padding:14px 0 14px 28px;
+  color:var(--muted);
+  cursor:pointer;
+  position:relative;
+  white-space:nowrap;
+  overflow:hidden;
+}
+.nav-item svg{flex-shrink:0;width:22px;height:22px;}
+.nav-label{opacity:0;transition:opacity .15s;font-size:14px;font-weight:600;}
+.sidebar:hover .nav-label{opacity:1;}
+.nav-item.active{color:var(--amber);background:rgba(229,9,20,0.12);}
+.nav-item.active::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber);
+}
+.nav-item:focus-visible, .tile:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible{
+  outline:2px solid var(--teal);outline-offset:2px;
+}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.topbar{
+  height:64px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  background:linear-gradient(180deg,rgba(10,14,20,.9),rgba(10,14,20,0));
+}
+.topbar h2{font-size:20px;font-weight:600;}
+.clock{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;}
+.view{flex:1;overflow-y:auto;padding:8px 32px 40px;}
+.view::-webkit-scrollbar{width:8px;}
+.view::-webkit-scrollbar-thumb{background:#252c37;border-radius:4px;}
+
+/* ===== Rows / tiles ===== */
+.row{margin-bottom:34px;}
+.row-title{font-size:16px;font-weight:600;margin-bottom:14px;color:#C9D2DC;}
+.tiles{display:flex;gap:16px;overflow-x:auto;padding:8px 2px 14px;}
+.tiles::-webkit-scrollbar{height:6px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;}
+
+.tile{
+  position:relative;
+  flex:0 0 200px;
+  height:120px;
+  border-radius:10px;
+  background:var(--surface2);
+  cursor:pointer;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  overflow:hidden;
+  transition:transform .18s ease;
+  border:2px solid transparent;
+}
+.grid .tile{flex:none;width:100%;}
+.tile:hover, .tile.focused{
+  transform:scale(1.06);
+  z-index:2;
+  border-color:var(--amber);
+  box-shadow:0 0 0 3px rgba(229,9,20,.35), 0 10px 24px rgba(0,0,0,.5);
+}
+.tile.focused::after{
+  content:'';position:absolute;inset:-6px;border-radius:14px;
+  background:conic-gradient(from 0deg, var(--amber), transparent 30%, transparent 70%, var(--amber));
+  z-index:-1;
+  animation:dial 2.4s linear infinite;
+  opacity:.55;
+}
+@keyframes dial{to{transform:rotate(360deg);}}
+.tile .thumb{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.85;}
+.tile .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.85));}
+.tile-body{position:relative;padding:10px 12px;z-index:1;}
+.tile-title{font-size:13px;font-weight:600;line-height:1.25;}
+.tile-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.tile-badge{
+  position:absolute;top:8px;right:8px;z-index:2;
+  font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;
+  background:rgba(0,0,0,.55);color:var(--teal);letter-spacing:.5px;
+}
+.tile.add-tile{
+  display:flex;align-items:center;justify-content:center;
+  border:2px dashed #2a3340;background:transparent;
+  color:var(--muted);font-size:28px;
+}
+.tile.add-tile:hover{color:var(--amber);border-color:var(--amber);}
+
+/* ===== Hero ===== */
+.hero{
+  height:260px;border-radius:14px;position:relative;overflow:hidden;margin-bottom:32px;
+  background:radial-gradient(circle at 20% 20%, #1c2431, #0A0E14 70%);
+  display:flex;align-items:flex-end;padding:28px;
+  border:1px solid rgba(255,255,255,.05);
+}
+.hero-netflix{
+  height:340px;
+  background:
+    linear-gradient(180deg, rgba(10,10,10,0) 40%, rgba(10,10,10,1) 100%),
+    radial-gradient(circle at 15% 25%, rgba(229,9,20,.35), transparent 55%),
+    linear-gradient(135deg, #1a1a1a, #0A0A0A 70%);
+  border:none;
+}
+.hero-actions{display:flex;gap:12px;margin-top:18px;}
+.hero-btn{
+  border:none;border-radius:6px;padding:12px 26px;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+}
+.hero-btn-primary{background:#fff;color:#000;}
+.hero-btn-primary:hover{background:rgba(255,255,255,.85);}
+.hero-btn-secondary{background:rgba(109,109,110,.5);color:#fff;}
+.hero-btn-secondary:hover{background:rgba(109,109,110,.35);}
+.hero h1{font-size:30px;margin-bottom:8px;}
+.hero p{color:var(--muted);max-width:520px;font-size:14px;line-height:1.5;}
+.hero .tag{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:1.5px;margin-bottom:10px;text-transform:uppercase;}
+
+/* ===== Forms ===== */
+.panel{background:var(--surface);border-radius:12px;padding:24px;margin-bottom:24px;border:1px solid rgba(255,255,255,.05);}
+.panel h3{font-size:15px;margin-bottom:16px;color:var(--amber);}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+.field input, .field select, .field textarea{
+  width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2a3340;
+  background:#0D1218;color:var(--text);font-size:14px;font-family:inherit;
+}
+.field textarea{min-height:90px;resize:vertical;}
+.row-inline{display:flex;gap:12px;}
+.row-inline .field{flex:1;}
+.btn{
+  background:var(--amber);color:#FFFFFF;border:none;padding:10px 18px;border-radius:8px;
+  font-weight:700;cursor:pointer;font-size:13px;letter-spacing:.3px;
+}
+.btn.secondary{background:transparent;border:1px solid #2a3340;color:var(--text);}
+.btn.danger{background:transparent;border:1px solid var(--danger);color:var(--danger);}
+.btn:hover{filter:brightness(1.1);}
+.subtabs{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;}
+.subtab{
+  padding:8px 16px;border-radius:20px;background:var(--surface2);color:var(--muted);
+  font-size:13px;cursor:pointer;font-weight:600;
+}
+.subtab.active{background:var(--amber);color:#FFFFFF;}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-left:3px solid var(--teal);border-radius:4px;}
+.empty{color:var(--muted);font-size:13px;padding:20px 0;}
+
+/* ===== Player modal ===== */
+.player-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;
+  display:none;align-items:center;justify-content:center;flex-direction:column;
+}
+.player-overlay.open{display:flex;}
+.player-box{width:min(1100px,92vw);}
+.player-box video, .player-box iframe{width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;border:none;}
+.player-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.player-head h3{font-size:15px;}
+.close-btn{background:var(--surface2);border:none;color:var(--text);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px;}
+.player-status{color:var(--muted);font-size:12px;margin-top:10px;}
+
+.search-bar{
+  display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:20px;padding:8px 16px;width:260px;
+}
+.search-bar input{background:transparent;border:none;color:var(--text);font-size:13px;width:100%;outline:none;}
+
+/* ===== Lecteur intégré (plein écran dans la zone de contenu) ===== */
+.player-page{display:flex;flex-direction:column;height:100%;}
+.player-stage{
+  flex:1;background:#000;border-radius:14px;overflow:hidden;position:relative;
+  display:flex;align-items:center;justify-content:center;min-height:0;
+}
+.player-stage video, .player-stage iframe{width:100%;height:100%;border:none;background:#000;}
+.player-info{padding:18px 4px 6px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.player-info h2{font-size:18px;font-weight:600;}
+.player-info .sub{color:var(--muted);font-size:13px;margin-top:2px;}
+.player-back{
+  background:var(--surface2);border:none;color:var(--text);padding:10px 18px;border-radius:8px;
+  cursor:pointer;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;flex-shrink:0;margin-right:16px;
+}
+.player-back:hover{background:#232b37;}
+.player-status-line{color:var(--muted);font-size:12px;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">📺 StreamHub</div>
+    <div class="nav-item active" data-view="home" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
+      <span class="nav-label">Accueil</span>
+    </div>
+    <div class="nav-item" data-view="youtube" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
+      <span class="nav-label">YouTube</span>
+    </div>
+    <div class="nav-item" data-view="molotov" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l16-3v13"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="17" r="2"/></svg>
+      <span class="nav-label">Molotov TV</span>
+    </div>
+    <div class="nav-item" data-view="iptv" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+      <span class="nav-label">IPTV</span>
+    </div>
+    <div class="nav-item" data-view="sources" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
+      <span class="nav-label">Sources</span>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="viewTitle">Accueil</h2>
+      <div style="display:flex;align-items:center;gap:18px;">
+        <div class="search-bar"><span>🔍</span><input id="globalSearch" placeholder="Rechercher une chaîne, une vidéo..."></div>
+        <div class="clock" id="clock">--:--</div>
+      </div>
+    </div>
+    <div class="view" id="view"></div>
+  </div>
+</div>
+
+
+
+<script>
+/* ===================== STORAGE ===================== */
+const DB = {
+  get(k, d){ try{ return JSON.parse(localStorage.getItem('sh_'+k)) ?? d; }catch(e){ return d; } },
+  set(k, v){ localStorage.setItem('sh_'+k, JSON.stringify(v)); }
+};
+let state = {
+  youtube: DB.get('youtube', []),          // {id,title,type:'video'|'live'}
+  m3u: DB.get('m3u', {url:'', raw:'', channels:[]}),
+  xtream: DB.get('xtream', {server:'',username:'',password:'',categories:[],streams:[]}),
+  stalker: DB.get('stalker', {portal:'',mac:'',channels:[]}),
+  history: DB.get('history', []),
+  proxy: DB.get('proxy', 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run'),
+  googleClientId: DB.get('googleClientId', '654265541879-4f8mb6u2m507aiju0iu87r9dh5p8s8dr.apps.googleusercontent.com'),
+  youtubeApiKey: DB.get('youtubeApiKey', 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik'),
+  subscriptions: [],
+  view: 'home',
+};
+
+function save(){
+  DB.set('youtube', state.youtube);
+  DB.set('m3u', state.m3u);
+  DB.set('xtream', state.xtream);
+  DB.set('stalker', state.stalker);
+  DB.set('history', state.history);
+  DB.set('proxy', state.proxy);
+  DB.set('googleClientId', state.googleClientId);
+  DB.set('youtubeApiKey', state.youtubeApiKey);
+}
+function pushHistory(item){
+  state.history.unshift({...item, ts:Date.now()});
+  state.history = state.history.slice(0,20);
+  save();
+}
+
+// Force les valeurs par défaut si elles sont vides (ex: ancienne sauvegarde vide en localStorage)
+if(!state.proxy) state.proxy = 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run';
+if(!state.youtubeApiKey) state.youtubeApiKey = 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik';
+save();
+
+/* ===================== NAV ===================== */
+const titles = {home:'Accueil', youtube:'YouTube', molotov:'Molotov TV', iptv:'IPTV', sources:'Mes sources'};
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click', ()=> switchView(el.dataset.view));
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter') switchView(el.dataset.view); });
+});
+function switchView(v){
+  state.view = v;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view===v));
+  document.getElementById('viewTitle').textContent = titles[v];
+  render();
+}
+
+/* ===================== CLOCK ===================== */
+function tickClock(){
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(tickClock,1000); tickClock();
+
+/* ===================== RENDER ROUTER ===================== */
+const viewEl = document.getElementById('view');
+function render(){
+  if(state.view==='home') renderHome();
+  else if(state.view==='youtube') renderYoutube();
+  else if(state.view==='molotov') renderMolotov();
+  else if(state.view==='iptv') renderIptv('m3u');
+  else if(state.view==='sources') renderSources();
+  attachFocusNav();
+}
+
+function tileHTML({title, sub, badge, thumb, onclickAttr}){
+  return `<div class="tile" tabindex="0" ${onclickAttr}>
+    ${thumb?`<div class="thumb" style="background-image:url('${thumb}')"></div>`:''}
+    <div class="scrim"></div>
+    ${badge?`<div class="tile-badge">${badge}</div>`:''}
+    <div class="tile-body">
+      <div class="tile-title">${title}</div>
+      ${sub?`<div class="tile-sub">${sub}</div>`:''}
+    </div>
+  </div>`;
+}
+
+/* ===================== HOME ===================== */
+function renderHome(){
+  const recent = state.history;
+  const lastWatched = recent[0];
+  viewEl.innerHTML = `
+    <div class="hero hero-netflix">
+      <div>
+        <div class="tag">Votre hub personnel</div>
+        <h1>Toutes vos sources, un seul écran</h1>
+        <p>YouTube, Molotov TV et vos flux IPTV (Xtream Codes, Stalker Portal, M3U) réunis dans une interface façon Netflix. Configurez vos sources dans l'onglet <strong>Sources</strong>.</p>
+        <div class="hero-actions">
+          ${lastWatched ? `<button class="hero-btn hero-btn-primary" id="heroPlay">▶ Lecture</button>` : ''}
+          <button class="hero-btn hero-btn-secondary" id="heroInfo">ℹ Plus d'infos</button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-title">Reprendre la lecture</div>
+      <div class="tiles" id="recentRow">
+        ${recent.length? recent.map(r=>tileHTML({title:r.title, sub:r.source, badge:r.source, onclickAttr:`data-play='${encodeURIComponent(JSON.stringify(r))}'`})).join(''): '<div class="empty">Rien pour l\'instant — lancez une chaîne ou une vidéo.</div>'}
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-title">Accès rapide</div>
+      <div class="tiles">
+        ${tileHTML({title:'YouTube', sub:'Chaînes & vidéos', onclickAttr:`data-nav="youtube"`})}
+        ${tileHTML({title:'Molotov TV', sub:'TV en direct', onclickAttr:`data-nav="molotov"`})}
+        ${tileHTML({title:'IPTV M3U', sub:'Playlist personnelle', onclickAttr:`data-nav="iptv"`})}
+        ${tileHTML({title:'Sources', sub:'Configurer mes accès', onclickAttr:`data-nav="sources"`})}
+      </div>
+    </div>`;
+  viewEl.querySelectorAll('[data-nav]').forEach(t=>t.addEventListener('click',()=>switchView(t.dataset.nav)));
+  viewEl.querySelectorAll('[data-play]').forEach(t=>t.addEventListener('click',()=>{
+    const item = JSON.parse(decodeURIComponent(t.dataset.play));
+    playItem(item);
+  }));
+  const heroPlay = document.getElementById('heroPlay');
+  if(heroPlay) heroPlay.addEventListener('click', ()=> playItem(lastWatched));
+  const heroInfo = document.getElementById('heroInfo');
+  if(heroInfo) heroInfo.addEventListener('click', ()=> switchView('sources'));
+}
+
+/* ===================== YOUTUBE ===================== */
+function extractYouTubeId(input){
+  input = input.trim();
+  const patterns = [
+    /(?:v=|\/videos\/|embed\/|youtu\.be\/|\/live\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+  for(const p of patterns){ const m = input.match(p); if(m) return m[1]; }
+  return null;
+}
+let gAccessToken = null;
+let gTokenClient = null;
+let ytChannelView = null; // {channelId, title, videos} when drilled into a subscribed channel
+
+function ensureGoogleAuth(){
+  if(!state.googleClientId){ alert('Configure ton Client ID Google dans Sources.'); switchView('sources'); return false; }
+  if(!window.google || !google.accounts){ alert('La librairie Google est encore en train de charger, réessaie dans une seconde.'); return false; }
+  if(!gTokenClient){
+    gTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: state.googleClientId,
+      scope: 'https://www.googleapis.com/auth/youtube.readonly',
+      callback: (resp)=>{
+        if(resp.error){ alert('Connexion Google refusée ou échouée : '+resp.error); return; }
+        gAccessToken = resp.access_token;
+        fetchSubscriptions();
+      }
+    });
+  }
+  return true;
+}
+function connectGoogle(){
+  if(!ensureGoogleAuth()) return;
+  gTokenClient.requestAccessToken();
+}
+async function fetchSubscriptions(){
+  const statusEl = document.getElementById('ytAuthStatus');
+  if(statusEl) statusEl.textContent = 'Chargement de tes abonnements...';
+  try{
+    const res = await fetch('https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50&order=alphabetical', {
+      headers:{ 'Authorization': 'Bearer '+gAccessToken }
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    state.subscriptions = (data.items||[]).map(it=>({
+      channelId: it.snippet.resourceId.channelId,
+      title: it.snippet.title,
+      thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url
+    }));
+    ytChannelView = null;
+    renderYoutube(); attachFocusNav();
+  }catch(e){
+    if(statusEl) statusEl.textContent = "Échec : "+e.message;
+  }
+}
+async function openChannelUploads(channelId, title){
+  ytChannelView = {channelId, title, videos: null};
+  renderYoutube(); attachFocusNav();
+  try{
+    const chRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}`, {
+      headers:{ 'Authorization': 'Bearer '+gAccessToken }
+    });
+    const chData = await chRes.json();
+    const uploadsId = chData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+    if(!uploadsId) throw new Error('Playlist des vidéos introuvable.');
+    const plRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=24&playlistId=${uploadsId}`, {
+      headers:{ 'Authorization': 'Bearer '+gAccessToken }
+    });
+    const plData = await plRes.json();
+    const videos = (plData.items||[]).map(it=>({
+      id: it.snippet.resourceId.videoId,
+      title: it.snippet.title,
+      thumb: it.snippet.thumbnails?.medium?.url
+    }));
+    ytChannelView = {channelId, title, videos};
+    renderYoutube(); attachFocusNav();
+  }catch(e){
+    ytChannelView = {channelId, title, videos: [], error: e.message};
+    renderYoutube(); attachFocusNav();
+  }
+}
+
+async function searchYouTube(query){
+  const key = state.youtubeApiKey;
+  if(!key){ alert('Configure ta clé API YouTube dans Sources.'); switchView('sources'); return; }
+  const resultsEl = document.getElementById('ytSearchResults');
+  resultsEl.innerHTML = '<div class="empty">Recherche en cours...</div>';
+  try{
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=16&q=${encodeURIComponent(query)}&key=${key}`);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const videos = (data.items||[]).map(it=>({
+      id: it.id.videoId, title: it.snippet.title, channel: it.snippet.channelTitle,
+      thumb: it.snippet.thumbnails?.medium?.url
+    }));
+    resultsEl.innerHTML = videos.length ? videos.map((v,i)=>tileHTML({
+      title:v.title, sub:v.channel, thumb:v.thumb, onclickAttr:`data-res="${i}"`
+    })).join('') : '<div class="empty">Aucun résultat.</div>';
+    resultsEl.querySelectorAll('.tile[data-res]').forEach(t=>{
+      t.addEventListener('click',()=>{
+        const v = videos[t.dataset.res];
+        openFramePlayer(v.title, `https://www.youtube.com/embed/${v.id}?autoplay=1`);
+        pushHistory({title:v.title, source:'YouTube', type:'youtube', id:v.id});
+      });
+    });
+    attachFocusNav();
+  }catch(e){
+    resultsEl.innerHTML = `<div class="empty">Erreur : ${e.message}</div>`;
+  }
+}
+
+function renderYoutube(){
+  const items = state.youtube;
+  const connected = !!gAccessToken;
+  viewEl.innerHTML = `
+    <div class="hero" style="height:200px;">
+      <div>
+        <div class="tag">Regarder des vidéos</div>
+        <h1>YouTube</h1>
+        <p>Recherche n'importe quelle vidéo, ou retrouve les vidéos de tes abonnements si tu es connecté.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Rechercher une vidéo</h3>
+      <div class="row-inline">
+        <div class="field"><label>Mot-clé, artiste, titre...</label><input id="ytSearchInput" placeholder="Ex: musique relaxante, actu foot, tuto bricolage..."></div>
+      </div>
+      <button class="btn" id="ytSearchBtn">Rechercher</button>
+    </div>
+    <div class="row">
+      <div class="row-title">Résultats</div>
+      <div class="grid" id="ytSearchResults"><div class="empty">Lance une recherche pour voir des vidéos.</div></div>
+    </div>
+    <div class="panel">
+      <h3>Mes abonnements</h3>
+      ${connected
+        ? `<div class="note" id="ytAuthStatus">Connecté — ${state.subscriptions.length} abonnements chargés.</div>`
+        : `<button class="btn" id="ytConnectGoogle">Se connecter avec Google</button><div class="note" id="ytAuthStatus"></div>`}
+    </div>
+    ${connected && state.subscriptions.length ? `
+    <div class="row">
+      <div class="row-title">Mes chaînes</div>
+      <div class="tiles" id="ytSubsRow">
+        ${state.subscriptions.map((s,i)=>tileHTML({title:s.title, sub:'Chaîne', badge:'Abonnement', thumb:s.thumb, onclickAttr:`data-sub="${i}"`})).join('')}
+      </div>
+    </div>` : ''}
+    ${ytChannelView ? `
+    <div class="row">
+      <div class="row-title">Vidéos — ${ytChannelView.title}</div>
+      <button class="btn secondary" id="ytBack" style="margin-bottom:14px;">← Retour aux abonnements</button>
+      <div class="grid" id="ytChannelGrid">
+        ${ytChannelView.videos===null ? '<div class="empty">Chargement des vidéos...</div>'
+          : ytChannelView.error ? `<div class="empty">Erreur : ${ytChannelView.error}</div>`
+          : ytChannelView.videos.length ? ytChannelView.videos.map((v,i)=>tileHTML({title:v.title, sub:ytChannelView.title, thumb:v.thumb, onclickAttr:`data-vid="${i}"`})).join('')
+          : '<div class="empty">Aucune vidéo trouvée.</div>'}
+      </div>
+    </div>` : ''}
+    <div class="row">
+      <div class="row-title">Continuer à regarder</div>
+      <div class="tiles" id="ytRecentRow">
+        ${state.history.filter(h=>h.source==='YouTube').length ?
+          state.history.filter(h=>h.source==='YouTube').slice(0,10).map(h=>tileHTML({
+            title:h.title, sub:'Reprendre', badge:'YouTube', thumb:h.id?`https://img.youtube.com/vi/${h.id}/hqdefault.jpg`:undefined,
+            onclickAttr:`data-play='${encodeURIComponent(JSON.stringify(h))}'`
+          })).join('') : '<div class="empty">Rien regardé pour l\'instant.</div>'}
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-title">Ajout manuel par lien (facultatif)</div>
+      <div class="panel">
+        <div class="row-inline">
+          <div class="field"><label>Lien ou ID YouTube</label><input id="ytInput" placeholder="https://www.youtube.com/watch?v=... ou ID"></div>
+          <div class="field" style="flex:0 0 160px;"><label>Titre (optionnel)</label><input id="ytTitle" placeholder="Nom affiché"></div>
+        </div>
+        <button class="btn" id="ytAdd">Ajouter à ma bibliothèque</button>
+      </div>
+      <div class="grid" id="ytGrid">
+        ${items.length? items.map((y,i)=>tileHTML({
+            title:y.title||y.id, sub:'YouTube',
+            thumb:`https://img.youtube.com/vi/${y.id}/hqdefault.jpg`,
+            onclickAttr:`data-idx="${i}"`
+          })).join('') : ''}
+      </div>
+    </div>`;
+
+  document.getElementById('ytSearchBtn').addEventListener('click',()=>{
+    const q = document.getElementById('ytSearchInput').value.trim();
+    if(q) searchYouTube(q);
+  });
+  document.getElementById('ytSearchInput').addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ const q=e.target.value.trim(); if(q) searchYouTube(q); }
+  });
+
+  const connectBtn = document.getElementById('ytConnectGoogle');
+  if(connectBtn) connectBtn.addEventListener('click', connectGoogle);
+
+  const backBtn = document.getElementById('ytBack');
+  if(backBtn) backBtn.addEventListener('click', ()=>{ ytChannelView = null; renderYoutube(); attachFocusNav(); });
+
+  viewEl.querySelectorAll('#ytSubsRow .tile[data-sub]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const s = state.subscriptions[t.dataset.sub];
+      openChannelUploads(s.channelId, s.title);
+    });
+  });
+  viewEl.querySelectorAll('#ytChannelGrid .tile[data-vid]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const v = ytChannelView.videos[t.dataset.vid];
+      openFramePlayer(v.title, `https://www.youtube.com/embed/${v.id}?autoplay=1`);
+      pushHistory({title:v.title, source:'YouTube', type:'youtube', id:v.id});
+    });
+  });
+
+  document.getElementById('ytAdd').addEventListener('click',()=>{
+    const raw = document.getElementById('ytInput').value;
+    const id = extractYouTubeId(raw);
+    if(!id){ alert('Lien ou ID YouTube invalide.'); return; }
+    const title = document.getElementById('ytTitle').value || id;
+    state.youtube.unshift({id,title});
+    save(); renderYoutube(); attachFocusNav();
+  });
+  viewEl.querySelectorAll('#ytGrid .tile[data-idx]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const y = state.youtube[t.dataset.idx];
+      openFramePlayer(y.title, `https://www.youtube.com/embed/${y.id}?autoplay=1`);
+      pushHistory({title:y.title, source:'YouTube', type:'youtube', id:y.id});
+    });
+  });
+  viewEl.querySelectorAll('#ytRecentRow .tile[data-play]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const item = JSON.parse(decodeURIComponent(t.dataset.play));
+      playItem(item);
+    });
+  });
+}
+
+/* ===================== MOLOTOV ===================== */
+const MOLOTOV_CHANNELS = [
+  {name:'TF1', color:'#0055A4'}, {name:'France 2', color:'#E4032E'}, {name:'France 3', color:'#003D7C'},
+  {name:'Canal+', color:'#000000'}, {name:'M6', color:'#F5A800'}, {name:'Arte', color:'#E2001A'},
+  {name:'BFM TV', color:'#E30613'}, {name:'CNews', color:'#0A2F5C'}, {name:'W9', color:'#7B2D8E'},
+  {name:'TMC', color:'#F39200'}, {name:'C8', color:'#D4145A'}, {name:"L'Équipe", color:'#004A99'},
+  {name:'France 5', color:'#00A19A'}, {name:'RMC Story', color:'#FF5900'}, {name:'Gulli', color:'#FFCB05'},
+  {name:'France Info', color:'#004990'},
+];
+function renderMolotov(){
+  viewEl.innerHTML = `
+    <div class="hero" style="height:200px;">
+      <div>
+        <div class="tag">TV en direct</div>
+        <h1>Molotov TV</h1>
+        <p>Molotov ne fournit pas d'API publique et bloque l'affichage en cadre (iframe) de son lecteur. Chaque tuile ci-dessous ouvre directement la page de la chaîne sur Molotov dans un nouvel onglet — la lecture reste gérée par leur plateforme officielle.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-title">Chaînes populaires</div>
+      <div class="grid" id="molGrid">
+        ${MOLOTOV_CHANNELS.map((c,i)=>`
+          <div class="tile" tabindex="0" data-channel="${encodeURIComponent(c.name)}" style="background:${c.color};display:flex;align-items:center;justify-content:center;">
+            <div class="scrim"></div>
+            <div class="tile-body" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0;">
+              <div class="tile-title" style="font-size:16px;">${c.name}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="row">
+      <div class="tiles">
+        ${tileHTML({title:'Ouvrir Molotov TV', sub:'molotov.tv', onclickAttr:`id="openMolotov"`})}
+      </div>
+    </div>
+  `;
+  document.getElementById('openMolotov').addEventListener('click',()=> window.open('https://www.molotov.tv','_blank'));
+  viewEl.querySelectorAll('#molGrid .tile[data-channel]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const name = decodeURIComponent(t.dataset.channel);
+      window.open(`https://www.molotov.tv/fr_fr/search?q=${encodeURIComponent(name)}`, '_blank');
+      pushHistory({title:name, source:'Molotov', type:'external'});
+    });
+  });
+}
+
+/* ===================== IPTV (M3U / Xtream / Stalker) ===================== */
+let iptvSub = 'm3u';
+function renderIptv(sub){
+  iptvSub = sub || iptvSub;
+  viewEl.innerHTML = `
+    <div class="subtabs">
+      <div class="subtab ${iptvSub==='m3u'?'active':''}" data-sub="m3u">Playlist M3U</div>
+      <div class="subtab ${iptvSub==='xtream'?'active':''}" data-sub="xtream">Xtream Codes</div>
+      <div class="subtab ${iptvSub==='stalker'?'active':''}" data-sub="stalker">Stalker Portal</div>
+    </div>
+    <div id="iptvBody"></div>
+  `;
+  viewEl.querySelectorAll('.subtab').forEach(s=>s.addEventListener('click',()=>renderIptv(s.dataset.sub)));
+  const body = document.getElementById('iptvBody');
+  if(iptvSub==='m3u') body.innerHTML = m3uPanel(); 
+  if(iptvSub==='xtream') body.innerHTML = xtreamPanel();
+  if(iptvSub==='stalker') body.innerHTML = stalkerPanel();
+  bindIptvEvents();
+  attachFocusNav();
+}
+
+/* ---- M3U ---- */
+function m3uPanel(){
+  const chans = state.m3u.channels || [];
+  return `
+    <div class="panel">
+      <h3>Charger une playlist M3U</h3>
+      <div class="field"><label>URL de la playlist (.m3u / .m3u8)</label><input id="m3uUrl" value="${state.m3u.url||''}" placeholder="https://mon-serveur/playlist.m3u"></div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" id="m3uLoadUrl">Charger depuis l'URL</button>
+        <label class="btn secondary" style="cursor:pointer;">Importer un fichier
+          <input type="file" id="m3uFile" accept=".m3u,.m3u8,text/plain" style="display:none;">
+        </label>
+      </div>
+      <div class="note" id="m3uStatus">${chans.length? chans.length+' chaînes chargées.' : 'Aucune playlist chargée.'}</div>
+    </div>
+    <div class="row">
+      <div class="row-title">Chaînes</div>
+      <div class="grid" id="m3uGrid">
+        ${chans.length? chans.map((c,i)=>tileHTML({title:c.name, sub:c.group||'IPTV', badge:'M3U', thumb:c.logo, onclickAttr:`data-idx="${i}"`})).join('') : '<div class="empty">Chargez une playlist pour voir vos chaînes.</div>'}
+      </div>
+    </div>`;
+}
+function parseM3U(text){
+  const lines = text.split(/\r?\n/);
+  const channels = [];
+  let cur = null;
+  for(const line of lines){
+    if(line.startsWith('#EXTINF')){
+      const nameMatch = line.split(',').pop();
+      const logo = (line.match(/tvg-logo="([^"]+)"/)||[])[1];
+      const group = (line.match(/group-title="([^"]+)"/)||[])[1];
+      cur = { name: nameMatch?.trim() || 'Chaîne', logo, group };
+    } else if(line && !line.startsWith('#')){
+      if(cur){ cur.url = line.trim(); channels.push(cur); cur=null; }
+    }
+  }
+  return channels;
+}
+
+/* ---- Xtream Codes ---- */
+function xtreamPanel(){
+  const x = state.xtream;
+  const streams = x.streams || [];
+  const proxy = state.proxy || '';
+  return `
+    <div class="panel">
+      <h3>Connexion Xtream Codes API</h3>
+      <div class="row-inline">
+        <div class="field"><label>Adresse serveur (http://host:port)</label><input id="xServer" value="${x.server||''}"></div>
+      </div>
+      <div class="row-inline">
+        <div class="field"><label>Identifiant</label><input id="xUser" value="${x.username||''}"></div>
+        <div class="field"><label>Mot de passe</label><input id="xPass" type="password" value="${x.password||''}"></div>
+      </div>
+      <div class="field"><label>Proxy CORS (optionnel — voir onglet Sources)</label><input id="xProxy" value="${proxy}" placeholder="https://corsproxy.io/?url="></div>
+      <button class="btn" id="xConnect">Se connecter</button>
+      <div class="note">Si "Failed to fetch" apparaît, ton panel bloque les appels directs depuis un navigateur (CORS). Renseigne l'URL de ton proxy Netlify ci-dessus pour contourner le blocage — voir l'onglet Sources pour le déployer.</div>
+      <div class="note" id="xStatus" style="display:none;"></div>
+    </div>
+    <div class="row">
+      <div class="row-title">Chaînes en direct</div>
+      <div class="grid" id="xGrid">
+        ${streams.length? streams.map((s,i)=>tileHTML({title:s.name, sub:s.category||'', badge:'Xtream', thumb:s.icon, onclickAttr:`data-idx="${i}"`})).join('') : '<div class="empty">Connectez-vous pour afficher vos chaînes.</div>'}
+      </div>
+    </div>`;
+}
+function proxied(url, extraHeaders){
+  const proxy = (document.getElementById('xProxy')?.value || document.getElementById('stProxy')?.value || state.proxy || '').trim();
+  if(!proxy) return fetch(url, extraHeaders? {headers:extraHeaders} : undefined);
+
+  // Proxy "préfixe" du type https://corsproxy.io/?url=  -> on colle l'URL encodée juste après
+  if(proxy.endsWith('=') || proxy.endsWith('/')){
+    return fetch(proxy + encodeURIComponent(url));
+  }
+  // Proxy "fonction" du type notre propre Netlify function -> paramètres url/headers séparés
+  const p = new URL(proxy);
+  p.searchParams.set('url', url);
+  if(extraHeaders) p.searchParams.set('headers', JSON.stringify(extraHeaders));
+  return fetch(p.toString());
+}
+
+async function xtreamConnect(){
+  const server = document.getElementById('xServer').value.replace(/\/$/,'');
+  const username = document.getElementById('xUser').value;
+  const password = document.getElementById('xPass').value;
+  const proxy = document.getElementById('xProxy').value.trim();
+  const statusEl = document.getElementById('xStatus');
+  statusEl.style.display='block'; statusEl.textContent = 'Connexion en cours...';
+  state.proxy = proxy; save();
+  try{
+    const url = `${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`;
+    const res = await proxied(url);
+    const text = await res.text();
+    if(!text || !text.trim()) throw new Error('Réponse vide — le portail bloque probablement les appels cross-origin (CORS). Configure un proxy ci-dessus.');
+    const data = JSON.parse(text);
+    const streams = data.map(s=>({
+      name: s.name, category: s.category_id, icon: s.stream_icon,
+      id: s.stream_id
+    }));
+    state.xtream = {server, username, password, streams};
+    save();
+    statusEl.textContent = streams.length+' chaînes récupérées.' + (proxy? ' (via proxy)':'');
+    renderIptv('xtream');
+  }catch(e){
+    statusEl.textContent = "Échec de connexion : " + e.message;
+  }
+}
+
+/* ---- Stalker Portal ---- */
+function stalkerPanel(){
+  const st = state.stalker;
+  const chans = st.channels || [];
+  const proxy = state.proxy || '';
+  return `
+    <div class="panel">
+      <h3>Connexion Stalker / Ministra Portal</h3>
+      <div class="row-inline">
+        <div class="field"><label>URL du portail (ex: http://host:port/portal.php)</label><input id="stPortal" value="${st.portal||''}"></div>
+      </div>
+      <div class="field" style="max-width:260px;"><label>Adresse MAC</label><input id="stMac" placeholder="00:1A:79:XX:XX:XX" value="${st.mac||''}"></div>
+      <div class="field"><label>Proxy CORS (optionnel — voir onglet Sources)</label><input id="stProxy" value="${proxy}" placeholder="https://corsproxy.io/?url="></div>
+      <button class="btn" id="stConnect">Se connecter</button>
+      <div class="note">Si "Failed to fetch" apparaît, c'est le navigateur qui bloque l'appel direct (CORS / mixed-content). Renseigne l'URL de ton proxy Netlify ci-dessus — voir l'onglet Sources pour le déployer en 2 minutes.</div>
+      <div class="note" id="stStatus" style="display:none;"></div>
+    </div>
+    <div class="row">
+      <div class="row-title">📡 TV en direct ${chans.length? `(${chans.length})`:''}</div>
+      ${chans.length? `<button class="btn secondary" id="stExportM3U" style="margin-bottom:14px;">📥 Exporter en M3U</button>
+      <div class="note" id="stExportStatus" style="display:none;"></div>` : ''}
+      ${chans.length && !st.itvCategoryView ? `
+        <div class="grid">
+          ${tileHTML({title:'Toutes les chaînes', sub:`${chans.length} chaînes`, badge:'TV', onclickAttr:`data-itvcat="all"`})}
+          ${(st.itvCategories||[]).map((c,i)=>{
+            const count = chans.filter(ch=>String(ch.genreId)===String(c.id)).length;
+            return count ? tileHTML({title:c.title, sub:`${count} chaînes`, badge:'TV', onclickAttr:`data-itvcat="${i}"`}) : '';
+          }).join('')}
+        </div>` : ''}
+      ${st.itvCategoryView ? `
+        <button class="btn secondary" id="stItvBack" style="margin:14px 0;">← Retour aux catégories</button>
+        <div class="row-title">${st.itvCategoryView.title}</div>
+        <div class="grid" id="stGrid">
+          ${st.itvCategoryView.channels.map((c,i)=>tileHTML({title:c.name, sub:'Stalker', badge:'TV', onclickAttr:`data-idx="${i}"`})).join('')}
+        </div>` : ''}
+      ${!chans.length ? '<div class="empty">Connectez-vous pour afficher vos chaînes.</div>' : ''}
+    </div>
+    ${st.token ? `
+    <div class="panel">
+      <h3>🎬 Films (VOD)</h3>
+      ${!st.vodCategories ? `<button class="btn" id="stLoadVod">Charger les catégories Films</button>` : ''}
+      <div class="note" id="stVodStatus" style="display:none;"></div>
+      ${st.vodCategories && !st.vodCategoryView ? `
+        <div class="grid" style="margin-top:14px;">
+          ${st.vodCategories.map((c,i)=>tileHTML({title:c.title, sub:'Catégorie', badge:'VOD', onclickAttr:`data-vodcat="${i}"`})).join('')}
+        </div>` : ''}
+      ${st.vodCategoryView ? `
+        <button class="btn secondary" id="stVodBack" style="margin:14px 0;">← Retour aux catégories</button>
+        <div class="row-title">${st.vodCategoryView.title}</div>
+        <div class="grid" id="stVodGrid">
+          ${st.vodItems?.length ? st.vodItems.map((v,i)=>tileHTML({title:v.name, sub:'Film', badge:'VOD', thumb:v.thumb, onclickAttr:`data-vodidx="${i}"`})).join('') : '<div class="empty">Chargement...</div>'}
         </div>` : ''}
     </div>
     <div class="panel">
