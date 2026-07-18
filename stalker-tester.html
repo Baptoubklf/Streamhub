@@ -1,4 +1,42 @@
-https://streamhub.tcl-fxw33d.workers.dev<div id="log"></div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testeur Stalker Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+<style>
+  body{background:#0A0E14;color:#E8ECF1;font-family:monospace;padding:20px;max-width:800px;margin:0 auto;}
+  h1{color:#FFB020;font-size:20px;margin-bottom:20px;}
+  label{display:block;font-size:12px;color:#8B96A5;margin:12px 0 4px;}
+  input{width:100%;padding:10px;border-radius:6px;border:1px solid #2a3340;background:#0D1218;color:#fff;font-family:monospace;font-size:13px;box-sizing:border-box;}
+  button{margin-top:16px;padding:10px 18px;background:#FFB020;color:#1a1300;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-family:monospace;}
+  button:disabled{opacity:.5;}
+  .step{margin-top:22px;padding:14px;background:#12171F;border-radius:8px;border-left:3px solid #2DD4BF;}
+  .step h3{margin:0 0 8px;font-size:13px;color:#2DD4BF;}
+  .step pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:#C9D2DC;margin:0;max-height:300px;overflow:auto;}
+  .error{border-left-color:#FF5D5D;}
+  .error h3{color:#FF5D5D;}
+  .ok{color:#4ADE80;}
+  select{width:100%;padding:10px;border-radius:6px;border:1px solid #2a3340;background:#0D1218;color:#fff;font-family:monospace;font-size:13px;box-sizing:border-box;}
+  video{width:100%;background:#000;margin-top:10px;border-radius:6px;}
+</style>
+</head>
+<body>
+<h1>🔧 Testeur Stalker Portal (isolé)</h1>
+
+<label>URL du portail</label>
+<input id="portal" placeholder="http://foxbleu.pro:80/c">
+
+<label>Adresse MAC</label>
+<input id="mac" placeholder="00:1A:79:BA:2D:3F">
+
+<label>Proxy (optionnel, ex: ton URL Val Town)</label>
+<input id="proxy" placeholder="https://STREAMHUB--xxxx.web.val.run">
+
+<button id="runHandshake">1. Tester le Handshake</button>
+
+<div id="log"></div>
 
 <script>
 const logEl = document.getElementById('log');
@@ -105,6 +143,60 @@ async function testCreateLink(channel){
     if(!streamUrl){ addStep('Aucune URL de flux', 'Le champ js.cmd est vide dans la réponse.', true); return; }
 
     addStep('URL de flux résolue', streamUrl);
+
+    // Test de lecture réelle via le proxy (au lieu de juste deviner le format)
+    const playDiv = document.createElement('div');
+    playDiv.className = 'step';
+    playDiv.innerHTML = `<h3>3. Tester la lecture réelle (via le proxy)</h3>
+      <button id="runPlayback">▶ Lire ce flux</button>
+      <video id="testVideo" controls></video>
+      <div id="playbackStatus" style="margin-top:8px;font-size:11px;color:#8B96A5;"></div>`;
+    logEl.appendChild(playDiv);
+    playDiv.scrollIntoView({behavior:'smooth'});
+
+    document.getElementById('runPlayback').addEventListener('click', ()=>{
+      const video = document.getElementById('testVideo');
+      const statusEl = document.getElementById('playbackStatus');
+      const proxy = sessionProxy;
+      if(!proxy){ statusEl.textContent = 'Aucun proxy renseigné — la lecture directe échouera presque certainement (CORS).'; }
+
+      function proxiedPlaybackUrl(url, headers){
+        if(!proxy) return url;
+        const p = new URL(proxy);
+        p.searchParams.set('url', url);
+        if(headers) p.searchParams.set('headers', JSON.stringify(headers));
+        return p.toString();
+      }
+      const cookieMac = `mac=${encodeURIComponent(sessionMac)}`;
+      const actualUrl = proxiedPlaybackUrl(streamUrl, {'Cookie': cookieMac});
+
+      statusEl.textContent = 'Connexion au flux via mpegts.js...';
+      if(window.__testPlayer){ try{ window.__testPlayer.destroy(); }catch(e){} }
+
+      if(window.mpegts && mpegts.getFeatureList().mseLivePlayback){
+        const player = mpegts.createPlayer({type:'mpegts', isLive:true, url: actualUrl});
+        window.__testPlayer = player;
+        player.attachMediaElement(video);
+        player.on(mpegts.Events.ERROR, (type, detail)=>{
+          statusEl.textContent = `❌ Erreur mpegts.js : ${type} — ${detail}`;
+        });
+        let lastTime = 0, playedTicks = 0;
+        const watch = setInterval(()=>{
+          if(!window.__testPlayer){ clearInterval(watch); return; }
+          if(video.currentTime > lastTime){
+            playedTicks++;
+            statusEl.textContent = `✅ Lecture en cours depuis ${video.currentTime.toFixed(1)}s (${playedTicks} vérifications OK)`;
+          } else if(video.currentTime === lastTime && playedTicks > 0){
+            statusEl.textContent = `⚠️ Bloqué à ${video.currentTime.toFixed(1)}s depuis la dernière vérification — possible coupure du proxy.`;
+          }
+          lastTime = video.currentTime;
+        }, 2000);
+        player.load();
+        player.play().catch(e=>{ statusEl.textContent = 'Erreur play() : '+e.message; });
+      } else {
+        statusEl.textContent = 'mpegts.js non supporté par ce navigateur.';
+      }
+    });
 
     // Test du protocole
     if(streamUrl.startsWith('rtmp://') || streamUrl.startsWith('rtsp://')){
