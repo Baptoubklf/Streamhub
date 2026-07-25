@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>StreamHub</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -291,7 +292,7 @@ let state = {
   proxy: DB.get('proxy', 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run'),
   googleClientId: DB.get('googleClientId', '654265541879-4f8mb6u2m507aiju0iu87r9dh5p8s8dr.apps.googleusercontent.com'),
   youtubeApiKey: DB.get('youtubeApiKey', 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik'),
-  epgUrl: DB.get('epgUrl', 'https://raw.githubusercontent.com/iptv-org/epg/gh-pages/guides/fr.epg.xml'),
+  epgUrl: DB.get('epgUrl', 'https://epgshare01.online/epgshare01/epg_ripper_FR1.xml.gz'),
   subscriptions: [],
   view: 'home',
 };
@@ -314,8 +315,13 @@ function pushHistory(item){
 }
 
 // Force les valeurs par défaut si elles sont vides (ex: ancienne sauvegarde vide en localStorage)
-if(!state.proxy) state.proxy = 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run';
+if(!state.proxy) state.proxy = 'https://streamhub-proxy.onrender.com';
 if(!state.youtubeApiKey) state.youtubeApiKey = 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik';
+// L'ancienne URL EPG par défaut (iptv-org) renvoyait une 404 — on la remplace
+// automatiquement par la nouvelle source confirmée fonctionnelle.
+if(!state.epgUrl || state.epgUrl.includes('iptv-org/epg/gh-pages')){
+  state.epgUrl = 'https://epgshare01.online/epgshare01/epg_ripper_FR1.xml.gz';
+}
 save();
 
 /* ===================== NAV ===================== */
@@ -664,15 +670,35 @@ function parseXmltvDate(str){
   return new Date(iso);
 }
 
+async function fetchGuideText(url){
+  const isGzip = /\.gz(\?|$)/i.test(url);
+  async function tryFetch(targetUrl){
+    const res = await fetch(targetUrl);
+    if(!res.ok) throw new Error(`Le serveur a répondu avec le statut ${res.status}.`);
+    if(isGzip){
+      const buf = await res.arrayBuffer();
+      return pako.ungzip(new Uint8Array(buf), {to:'string'});
+    }
+    return res.text();
+  }
+  try{
+    return await tryFetch(url);
+  }catch(networkErr){
+    // Repli sur le proxy CORS configuré si l'appel direct échoue
+    const proxy = (state.proxy||'').trim();
+    if(!proxy) throw networkErr;
+    const proxied = proxy.endsWith('=')||proxy.endsWith('/') ? proxy+encodeURIComponent(url) : (()=>{ const p=new URL(proxy); p.searchParams.set('url', url); return p.toString(); })();
+    return await tryFetch(proxied);
+  }
+}
+
 async function loadGuideData(){
   guideLoading = true; guideError = null;
   renderGuide();
   try{
     const url = state.epgUrl;
     if(!url) throw new Error('Aucune source EPG configurée (onglet Sources).');
-    const res = await fetch(url);
-    if(!res.ok) throw new Error(`Le serveur a répondu avec le statut ${res.status}.`);
-    const text = await res.text();
+    const text = await fetchGuideText(url);
     const doc = new DOMParser().parseFromString(text, 'text/xml');
     if(doc.querySelector('parsererror')) throw new Error('Le fichier XMLTV reçu est invalide.');
 
