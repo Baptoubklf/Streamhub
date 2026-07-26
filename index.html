@@ -1100,6 +1100,7 @@ function vodPanel(){
       <div class="note" id="stVodStatus" style="display:none;"></div>
       ${st.vodCategories && !st.vodCategoryView ? `
         <div class="grid" style="margin-top:14px;">
+          ${tileHTML({title:'Toutes les catégories', sub:'Tous les films', badge:'VOD', onclickAttr:`data-vodcat="all"`})}
           ${st.vodCategories.map((c,i)=>tileHTML({title:c.title, sub:'Catégorie', badge:'VOD', onclickAttr:`data-vodcat="${i}"`})).join('')}
         </div>` : ''}
       ${st.vodCategoryView ? `
@@ -1123,6 +1124,7 @@ function seriesPanel(){
       <div class="note" id="stSeriesStatus" style="display:none;"></div>
       ${st.seriesCategories && !st.seriesCategoryView ? `
         <div class="grid" style="margin-top:14px;">
+          ${tileHTML({title:'Toutes les catégories', sub:'Toutes les séries', badge:'Series', onclickAttr:`data-seriescat="all"`})}
           ${st.seriesCategories.map((c,i)=>tileHTML({title:c.title, sub:'Catégorie', badge:'Series', onclickAttr:`data-seriescat="${i}"`})).join('')}
         </div>` : ''}
       ${st.seriesCategoryView && !st.episodeView ? `
@@ -1424,8 +1426,13 @@ function bindVodSeriesEvents(){
   if(stLoadVod) stLoadVod.addEventListener('click', async ()=>{ await loadStalkerVodCategories(); refresh(); });
   viewEl.querySelectorAll('[data-vodcat]').forEach(t=>{
     t.addEventListener('click', async ()=>{
-      const cat = state.stalker.vodCategories[t.dataset.vodcat];
-      await loadStalkerVodItems(cat.id, cat.title);
+      const val = t.dataset.vodcat;
+      if(val === 'all'){
+        await loadStalkerVodItems('*', 'Toutes les catégories');
+      } else {
+        const cat = state.stalker.vodCategories[val];
+        await loadStalkerVodItems(cat.id, cat.title);
+      }
       refresh();
     });
   });
@@ -1460,8 +1467,13 @@ function bindVodSeriesEvents(){
   if(stLoadSeries) stLoadSeries.addEventListener('click', async ()=>{ await loadStalkerSeriesCategories(); refresh(); });
   viewEl.querySelectorAll('[data-seriescat]').forEach(t=>{
     t.addEventListener('click', async ()=>{
-      const cat = state.stalker.seriesCategories[t.dataset.seriescat];
-      await loadStalkerSeriesItems(cat.id, cat.title);
+      const val = t.dataset.seriescat;
+      if(val === 'all'){
+        await loadStalkerSeriesItems('*', 'Toutes les catégories');
+      } else {
+        const cat = state.stalker.seriesCategories[val];
+        await loadStalkerSeriesItems(cat.id, cat.title);
+      }
       refresh();
     });
   });
