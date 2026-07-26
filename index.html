@@ -3,299 +3,412 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CineTV - Interface Lecteur Média</title>
+  <title>StreamHub - Hub Multimédia</title>
+  
+  <!-- Librairies de streaming CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.js"></script>
+
   <style>
     :root {
-      --bg: #0b0e14;
-      --surface: #151a23;
-      --primary: #10b981; /* Vert type Xbox */
-      --text: #f3f4f6;
-      --muted: #9ca3af;
-      --focus-glow: rgba(16, 185, 129, 0.4);
+      --bg-main: #0f0f12;
+      --bg-card: #1a1a24;
+      --bg-card-hover: #252535;
+      --accent: #e50914;
+      --text: #ffffff;
+      --text-muted: #a0a0b0;
+      --focus-ring: #3b82f6;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
 
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-    }
-
-    /* ===== Sidebar (Menu Télécommande) ===== */
-    .sidebar {
-      width: 90px;
-      background: rgba(21, 26, 35, 0.6);
-      backdrop-filter: blur(12px);
+    /* Navigation latérale */
+    aside {
+      width: 240px;
+      background-color: #08080a;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 30px 0;
-      gap: 28px;
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
-      z-index: 10;
+      gap: 20px;
+      border-right: 1px solid #222;
+      flex-shrink: 0;
     }
 
-    .brand-logo {
-      font-size: 24px;
-      font-weight: 800;
-      color: var(--primary);
-      margin-bottom: 20px;
-    }
-
-    .nav-btn {
-      width: 50px;
-      height: 50px;
-      border-radius: 12px;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 20px;
+    aside .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); letter-spacing: 1px; }
+    aside nav { display: flex; flex-direction: column; gap: 8px; }
+    
+    .nav-item {
+      display: block;
+      padding: 12px 16px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 8px;
+      transition: all 0.2s;
+      outline: none;
       cursor: pointer;
+    }
+
+    .nav-item:hover, .nav-item.active { background-color: var(--bg-card); color: var(--text); }
+    .nav-item:focus { border: 2px solid var(--focus-ring); background-color: var(--bg-card); color: var(--text); }
+
+    /* Contenu principal */
+    main { flex: 1; display: grid; grid-template-rows: 1fr 280px; padding: 20px; gap: 20px; overflow: hidden; }
+
+    /* Zone lecteur vidéo */
+    .player-container {
+      background: #000;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .nav-btn:hover, .nav-btn:focus, .nav-btn.active {
-      color: #fff;
-      background: var(--surface);
-      transform: scale(1.1);
-      outline: 2px solid var(--primary);
-    }
+    video { width: 100%; height: 100%; object-fit: contain; }
 
-    /* ===== Zone Principale ===== */
-    .main-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 40px;
-      scroll-behavior: smooth;
-    }
-
-    /* En-tête / Hero Section */
-    .hero {
-      position: relative;
-      height: 380px;
-      border-radius: 20px;
-      overflow: hidden;
-      display: flex;
-      align-items: flex-end;
-      padding: 40px;
-      margin-bottom: 40px;
-      background: linear-gradient(180deg, rgba(0,0,0,0) 20%, rgba(11,14,20,0.95) 100%),
-                  url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=1200&q=80') center/cover;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .hero-details {
-      max-width: 550px;
-    }
-
-    .badge {
-      display: inline-block;
-      background: var(--primary);
-      color: #000;
-      font-weight: 700;
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-    }
-
-    .hero h1 {
-      font-size: 38px;
-      font-weight: 800;
-      margin-bottom: 10px;
-      line-height: 1.1;
-    }
-
-    .hero p {
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-
-    .action-btns {
-      display: flex;
-      gap: 14px;
-    }
-
-    .btn {
-      padding: 12px 24px;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 14px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-primary {
-      background: var(--text);
-      color: #000;
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text);
-      backdrop-filter: blur(10px);
-    }
-
-    .btn:focus, .btn:hover {
-      transform: scale(1.05);
-      border-color: var(--primary);
-      box-shadow: 0 0 15px var(--focus-glow);
-      outline: none;
-    }
-
-    /* ===== Rangées de Cartes ===== */
-    .section-title {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 16px;
-    }
-
-    .media-row {
-      display: flex;
-      gap: 20px;
-      overflow-x: auto;
-      padding: 10px 4px 30px;
-    }
-
-    .media-row::-webkit-scrollbar {
-      display: none;
-    }
-
-    .card {
-      flex: 0 0 200px;
-      height: 280px;
-      background: var(--surface);
-      border-radius: 14px;
-      overflow: hidden;
-      cursor: pointer;
-      position: relative;
-      transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-      border: 2px solid transparent;
-    }
-
-    .card img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .card-info {
+    /* Overlay statut */
+    .stream-status {
       position: absolute;
-      bottom: 0;
-      inset-x: 0;
-      padding: 16px;
-      background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+      top: 15px;
+      left: 15px;
+      background: rgba(0,0,0,0.75);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .status-dot { width: 8px; height: 8px; background: #00ff66; border-radius: 50%; }
+    .status-dot.error { background: #ff3333; }
+    .status-dot.connecting { background: #ffaa00; }
+
+    /* Grille EPG & Chaînes */
+    .epg-section {
+      background-color: var(--bg-card);
+      border-radius: 12px;
+      padding: 15px;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
+      gap: 12px;
+      overflow: hidden;
     }
 
-    .card-title {
-      font-size: 14px;
-      font-weight: 600;
+    .epg-header { display: flex; justify-content: space-between; align-items: center; }
+    .epg-header h3 { font-size: 1.1rem; }
+
+    .channels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      overflow-y: auto;
+      padding-right: 4px;
     }
 
-    .card-sub {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    /* Focus Télécommande / Controlleur TV */
-    .card:focus, .card:hover {
-      transform: scale(1.1);
-      border-color: var(--primary);
-      box-shadow: 0 12px 24px rgba(0,0,0,0.6), 0 0 20px var(--focus-glow);
+    .channel-card {
+      background: var(--bg-card-hover);
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
       outline: none;
-      z-index: 5;
     }
+
+    .channel-card:hover, .channel-card.selected { border-color: var(--accent); }
+    .channel-card:focus { border-color: var(--focus-ring); transform: scale(1.02); }
+    .channel-title { font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .channel-epg { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
 </head>
 <body>
 
-  <nav class="sidebar">
-    <div class="brand-logo">▶</div>
-    <button class="nav-btn active" tabindex="0" title="Accueil">🏠</button>
-    <button class="nav-btn" tabindex="0" title="Recherche">🔍</button>
-    <button class="nav-btn" tabindex="0" title="Bibliothèque">📁</button>
-    <button class="nav-btn" tabindex="0" title="Paramètres">⚙️</button>
-  </nav>
+  <!-- Navigation Latérale -->
+  <aside>
+    <div class="logo">StreamHub</div>
+    <nav>
+      <a class="nav-item active" tabindex="0">📺 TV en direct</a>
+      <a class="nav-item" tabindex="0">🔴 YouTube</a>
+      <a class="nav-item" tabindex="0">🎬 Films & Séries</a>
+      <a class="nav-item" tabindex="0">🇫🇷 Molotov TV</a>
+      <a class="nav-item" tabindex="0">⚙️ Configuration</a>
+    </nav>
+  </aside>
 
-  <main class="main-content">
-
-    <section class="hero">
-      <div class="hero-details">
-        <span class="badge">Nouveauté</span>
-        <h1>Cyber Odyssey 2099</h1>
-        <p>Un voyage visuel immersif à travers les mégapoles du futur. Découvrez un univers captivant en haute définition.</p>
-        <div class="action-btns">
-          <button class="btn btn-primary" tabindex="0">▶ Regarder</button>
-          <button class="btn btn-secondary" tabindex="0">+ Ma Liste</button>
-        </div>
+  <!-- Zone Principale -->
+  <main>
+    <!-- Lecteur Vidéo -->
+    <div class="player-container">
+      <div class="stream-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="channelName">Chargement...</span>
       </div>
-    </section>
-
-    <h2 class="section-title">En tendance actuellement</h2>
-    <div class="media-row">
-      <div class="card" tabindex="0">
-        <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80" alt="Cover">
-        <div class="card-info">
-          <div class="card-title">Horizon Deep</div>
-          <div class="card-sub">Sci-Fi • 2h 15m</div>
-        </div>
-      </div>
-
-      <div class="card" tabindex="0">
-        <img src="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=400&q=80" alt="Cover">
-        <div class="card-info">
-          <div class="card-title">Neon Chronicles</div>
-          <div class="card-sub">Action • Saison 1</div>
-        </div>
-      </div>
-
-      <div class="card" tabindex="0">
-        <img src="https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?auto=format&fit=crop&w=400&q=80" alt="Cover">
-        <div class="card-info">
-          <div class="card-title">The Void</div>
-          <div class="card-sub">Thriller • 1h 48m</div>
-        </div>
-      </div>
-
-      <div class="card" tabindex="0">
-        <img src="https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?auto=format&fit=crop&w=400&q=80" alt="Cover">
-        <div class="card-info">
-          <div class="card-title">Astral Light</div>
-          <div class="card-sub">Documentaire</div>
-        </div>
-      </div>
+      <video id="videoPlayer" controls autoplay></video>
     </div>
 
+    <!-- Catalogue & EPG -->
+    <section class="epg-section">
+      <div class="epg-header">
+        <h3>Chaînes en direct</h3>
+      </div>
+      <div class="channels-grid" id="channelsList">
+        <!-- Généré dynamiquement -->
+      </div>
+    </section>
   </main>
 
   <script>
-    // Fait défiler automatiquement la ligne vers la carte sélectionnée avec les flèches du clavier
-    document.querySelectorAll('[tabindex="0"]').forEach(element => {
-      element.addEventListener('focus', () => {
-        element.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
+    /* ==========================================================================
+       1. REQUÊTES & PROXY CORS
+       ========================================================================== */
+    const StreamConfig = {
+      corsProxy: "https://corsproxy.io/?",
+      useProxyFallback: true,
+      timeout: 10000
+    };
+
+    async function fetchWithFallback(url, options = {}) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), StreamConfig.timeout);
+
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        if (!response.ok) throw new Error(`HTTP: ${response.status}`);
+        return await response.text();
+      } catch (error) {
+        clearTimeout(id);
+        if (StreamConfig.useProxyFallback) {
+          console.warn(`[StreamHub] Bascule vers le proxy CORS...`);
+          const proxyUrl = `${StreamConfig.corsProxy}${encodeURIComponent(url)}`;
+          const proxyController = new AbortController();
+          const proxyId = setTimeout(() => proxyController.abort(), StreamConfig.timeout);
+          
+          const proxyResponse = await fetch(proxyUrl, { ...options, signal: proxyController.signal });
+          clearTimeout(proxyId);
+          if (!proxyResponse.ok) throw new Error(`HTTP Proxy: ${proxyResponse.status}`);
+          return await proxyResponse.text();
+        }
+        throw error;
+      }
+    }
+
+    /* ==========================================================================
+       2. PARSER M3U
+       ========================================================================== */
+    function parseM3U(m3uContent) {
+      const lines = m3uContent.split(/\r?\n/);
+      const channels = [];
+      let currentChannel = null;
+
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+
+        if (line.startsWith('#EXTINF:')) {
+          currentChannel = { name: 'Chaîne inconnue', logo: '', group: 'Général', id: '' };
+          const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
+          const groupMatch = line.match(/group-title="([^"]*)"/i);
+          const nameMatch = line.split(',');
+
+          if (logoMatch) currentChannel.logo = logoMatch[1];
+          if (groupMatch) currentChannel.group = groupMatch[1];
+          if (nameMatch.length > 1) currentChannel.name = nameMatch[nameMatch.length - 1].trim();
+
+        } else if (!line.startsWith('#') && currentChannel) {
+          currentChannel.url = line;
+          channels.push(currentChannel);
+          currentChannel = null;
+        }
+      }
+      return channels;
+    }
+
+    /* ==========================================================================
+       3. MOTEUR DE LECTURE VIDÉO AVEC RECONNEXION AUTO
+       ========================================================================== */
+    class StreamHubPlayer {
+      constructor(videoElement, statusDot, channelLabel) {
+        this.video = videoElement;
+        this.statusDot = statusDot;
+        this.channelLabel = channelLabel;
+        this.hls = null;
+        this.mpegtsPlayer = null;
+        this.retryCount = 0;
+        this.maxRetries = 5;
+        this.retryDelay = 3000;
+        this.currentUrl = null;
+        this.stallCheckInterval = null;
+        this.lastTime = 0;
+
+        this.initStallDetector();
+      }
+
+      setStatus(state) {
+        this.statusDot.className = 'status-dot ' + state;
+      }
+
+      loadStream(url, name) {
+        this.destroy();
+        this.currentUrl = url;
+        this.retryCount = 0;
+        if (name) this.channelLabel.textContent = name;
+        this.setStatus('connecting');
+
+        console.log(`[Player] Chargement : ${url}`);
+
+        if (url.includes('.m3u8')) {
+          this.playHLS(url);
+        } else if (url.includes('.ts') || url.includes('type=m3u_plus')) {
+          this.playMpegTS(url);
+        } else {
+          this.video.src = url;
+          this.video.play()
+            .then(() => this.setStatus(''))
+            .catch(e => this.handleError(e));
+        }
+      }
+
+      playHLS(url) {
+        if (Hls.isSupported()) {
+          this.hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+          this.hls.loadSource(url);
+          this.hls.attachMedia(this.video);
+
+          this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            this.video.play().then(() => this.setStatus('')).catch(() => {});
+          });
+
+          this.hls.on(Hls.Events.ERROR, (e, data) => {
+            if (data.fatal) {
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) this.hls.startLoad();
+              else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) this.hls.recoverMediaError();
+              else this.handleError('Erreur fatale HLS');
+            }
+          });
+        } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
+          this.video.src = url;
+          this.video.play().then(() => this.setStatus('')).catch(e => this.handleError(e));
+        }
+      }
+
+      playMpegTS(url) {
+        if (mpegts.isSupported()) {
+          this.mpegtsPlayer = mpegts.createPlayer({ type: 'mse', isLive: true, url: url });
+          this.mpegtsPlayer.attachMediaElement(this.video);
+          this.mpegtsPlayer.load();
+          this.mpegtsPlayer.play().then(() => this.setStatus('')).catch(e => this.handleError(e));
+
+          this.mpegtsPlayer.on(mpegts.Events.ERROR, (err) => this.handleError(err));
+        } else {
+          this.video.src = url;
+          this.video.play().then(() => this.setStatus('')).catch(e => this.handleError(e));
+        }
+      }
+
+      initStallDetector() {
+        this.stallCheckInterval = setInterval(() => {
+          if (!this.video.paused && this.currentUrl) {
+            if (this.video.currentTime === this.lastTime) {
+              console.warn('[Player] Flux gelé détecté !');
+              this.handleError('Freeze');
+            }
+            this.lastTime = this.video.currentTime;
+          }
+        }, 6000);
+      }
+
+      handleError(reason) {
+        this.setStatus('error');
+        if (this.retryCount < this.maxRetries) {
+          this.retryCount++;
+          console.log(`[Player] Tentative ${this.retryCount}/${this.maxRetries}...`);
+          setTimeout(() => {
+            if (this.currentUrl) this.loadStream(this.currentUrl);
+          }, this.retryDelay);
+        } else {
+          console.error(`[Player] Échec de la lecture : ${reason}`);
+        }
+      }
+
+      destroy() {
+        if (this.hls) { this.hls.destroy(); this.hls = null; }
+        if (this.mpegtsPlayer) { this.mpegtsPlayer.destroy(); this.mpegtsPlayer = null; }
+        this.video.pause();
+        this.video.removeAttribute('src');
+        this.video.load();
+      }
+    }
+
+    /* ==========================================================================
+       4. INITIALISATION & NAVIGATION SPATIALE (SMART TV)
+       ========================================================================== */
+    document.addEventListener('DOMContentLoaded', () => {
+      const videoElem = document.getElementById('videoPlayer');
+      const statusDot = document.getElementById('statusDot');
+      const channelLabel = document.getElementById('channelName');
+      
+      const player = new StreamHubPlayer(videoElem, statusDot, channelLabel);
+
+      // Chaînes de démonstration
+      const demoChannels = [
+        { name: 'Big Buck Bunny (HLS)', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', epg: 'Vidéo de démonstration 1' },
+        { name: 'Sintel (HLS Multi-bitrate)', url: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8', epg: 'Film Open Source Sintel' },
+        { name: 'Tears of Steel (HLS)', url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8', epg: 'Court-métrage VFX' }
+      ];
+
+      const grid = document.getElementById('channelsList');
+
+      // Rendu de la grille
+      demoChannels.forEach((ch, index) => {
+        const card = document.createElement('div');
+        card.className = `channel-card ${index === 0 ? 'selected' : ''}`;
+        card.tabIndex = 0; // Focusable au clavier
+        card.innerHTML = `
+          <div class="channel-title">${ch.name}</div>
+          <div class="channel-epg">${ch.epg}</div>
+        `;
+
+        const selectChannel = () => {
+          document.querySelectorAll('.channel-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          player.loadStream(ch.url, ch.name);
+        };
+
+        card.addEventListener('click', selectChannel);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') selectChannel();
         });
+
+        grid.appendChild(card);
+      });
+
+      // Lancement de la première chaîne
+      player.loadStream(demoChannels[0].url, demoChannels[0].name);
+
+      // Gestion basique des flèches directionnelles (Smart TV / Clavier)
+      document.addEventListener('keydown', (e) => {
+        const focusables = Array.from(document.querySelectorAll('[tabindex="0"]'));
+        const index = focusables.indexOf(document.activeElement);
+
+        if (index > -1) {
+          if (e.key === 'ArrowRight' && index + 1 < focusables.length) {
+            focusables[index + 1].focus();
+          } else if (e.key === 'ArrowLeft' && index - 1 >= 0) {
+            focusables[index - 1].focus();
+          } else if (e.key === 'ArrowDown' && index + 3 < focusables.length) {
+            focusables[index + 3].focus();
+          } else if (e.key === 'ArrowUp' && index - 3 >= 0) {
+            focusables[index - 3].focus();
+          }
+        } else if (focusables.length > 0) {
+          focusables[0].focus();
+        }
       });
     });
   </script>
