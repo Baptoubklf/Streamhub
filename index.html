@@ -47,7 +47,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   font-weight:700;
   font-size:20px;
   letter-spacing:.5px;
-  margin-bottom:34px;
+  margin-bottom:24px;
   white-space:nowrap;
   overflow:hidden;
   width:100%;
@@ -57,14 +57,14 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 .nav-item{
   width:100%;
   display:flex;align-items:center;gap:14px;
-  padding:14px 0 14px 28px;
+  padding:12px 0 12px 28px;
   color:var(--muted);
   cursor:pointer;
   position:relative;
   white-space:nowrap;
   overflow:hidden;
 }
-.nav-item svg{flex-shrink:0;width:22px;height:22px;}
+.nav-item svg{flex-shrink:0;width:20px;height:20px;}
 .nav-label{opacity:1;font-size:14px;font-weight:600;}
 .nav-item.active{color:var(--amber);background:rgba(0,174,239,0.12);}
 .nav-item.active::before{
@@ -72,9 +72,9 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 }
 .nav-group-label{
   font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  color:#4A6488;padding:18px 0 8px 28px;
+  color:#4A6488;padding:16px 0 6px 28px;
 }
-.nav-group-label:first-of-type{padding-top:4px;}
+.nav-group-label:first-of-type{padding-top:0px;}
 .sidebar-spacer{flex:1;}
 .sidebar-mini-preview{
   margin:0 16px 18px;padding:10px;border-radius:10px;background:var(--surface2);
@@ -236,17 +236,19 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   <nav class="sidebar" id="sidebar">
     <div class="brand">📺 StreamHub</div>
 
-    <div class="nav-group-label">Accueil</div>
+    <!-- GROUPE 1: EN DIRECT & GUIDE -->
+    <div class="nav-group-label">Direct & Guide</div>
     <div class="nav-item active" data-view="home" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
       <span class="nav-label">À la une</span>
     </div>
     <div class="nav-item" data-view="guide" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/><path d="M7 13h3M7 16h6"/></svg>
-      <span class="nav-label">Guide TV</span>
+      <span class="nav-label">Guide TV (EPG)</span>
     </div>
 
-    <div class="nav-group-label">Contenus</div>
+    <!-- GROUPE 2: CATALOGUE & MÉDIAS -->
+    <div class="nav-group-label">Catalogue</div>
     <div class="nav-item" data-view="iptv" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
       <span class="nav-label">IPTV & VOD</span>
@@ -270,16 +272,17 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
       </div>
     </div>
 
-    <div class="nav-group-label">Réglages</div>
+    <!-- GROUPE 3: CONFIGURATION -->
+    <div class="nav-group-label">Configuration</div>
     <div class="nav-item" data-view="sources" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
-      <span class="nav-label">Sources</span>
+      <span class="nav-label">Gestion sources</span>
     </div>
   </nav>
 
   <div class="main">
     <div class="topbar">
-      <h2 id="viewTitle">Accueil</h2>
+      <h2 id="viewTitle">À la une</h2>
       <div style="display:flex;align-items:center;gap:18px;">
         <div class="search-bar"><span>🔍</span><input id="globalSearch" placeholder="Rechercher une chaîne, une vidéo..."></div>
         <div class="clock" id="clock">--:--</div>
@@ -343,15 +346,25 @@ if(!state.epgUrl || state.epgUrl.includes('iptv-org/epg/gh-pages') || state.epgU
 save();
 
 /* ===================== NAV ===================== */
-const titles = {home:'Accueil', youtube:'YouTube', molotov:'Molotov TV', iptv:'IPTV', guide:'Guide TV', sources:'Mes sources'};
+const titles = {
+  home: 'À la une',
+  guide: 'Guide TV (EPG)',
+  iptv: 'IPTV & VOD',
+  youtube: 'YouTube',
+  molotov: 'Molotov TV',
+  sources: 'Gestion sources',
+  player: 'Lecture'
+};
+
 document.querySelectorAll('.nav-item').forEach(el=>{
   el.addEventListener('click', ()=> switchView(el.dataset.view));
   el.addEventListener('keydown', e=>{ if(e.key==='Enter') switchView(el.dataset.view); });
 });
+
 function switchView(v){
   state.view = v;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view===v));
-  document.getElementById('viewTitle').textContent = titles[v];
+  document.getElementById('viewTitle').textContent = titles[v] || 'StreamHub';
   render();
 }
 
@@ -400,6 +413,19 @@ function tileHTML({title, sub, badge, thumb, epg, onclickAttr}){
   </div>`;
 }
 
+/* ===================== GLOBAL SEARCH ===================== */
+document.getElementById('globalSearch')?.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    const q = e.target.value.trim();
+    if(!q) return;
+    if(state.view === 'youtube'){
+      searchYouTube(q);
+    } else {
+      switchView('iptv');
+    }
+  }
+});
+
 /* ===================== HOME ===================== */
 function renderHome(){
   const recent = state.history;
@@ -409,10 +435,10 @@ function renderHome(){
       <div>
         <div class="tag">Votre hub personnel</div>
         <h1>Toutes vos sources, un seul écran</h1>
-        <p>YouTube, Molotov TV et vos flux IPTV réunis dans une interface moderne. Configurez vos sources dans l'onglet <strong>Sources</strong>.</p>
+        <p>YouTube, Molotov TV et vos flux IPTV réunis dans une interface moderne. Configurez vos accès dans l'onglet <strong>Gestion sources</strong>.</p>
         <div class="hero-actions">
           ${lastWatched ? `<button class="hero-btn hero-btn-primary" id="heroPlay">▶ Lecture</button>` : ''}
-          <button class="hero-btn hero-btn-secondary" id="heroInfo">ℹ Plus d'infos</button>
+          <button class="hero-btn hero-btn-secondary" id="heroInfo">ℹ Régler mes sources</button>
         </div>
       </div>
     </div>
@@ -426,7 +452,7 @@ function renderHome(){
       <div class="row-title">Accès rapide</div>
       <div class="tiles">
         ${tileHTML({title:'Guide TV', sub:'Programme en direct', onclickAttr:`data-nav="guide"`})}
-        ${tileHTML({title:'IPTV M3U', sub:'Playlist personnelle', onclickAttr:`data-nav="iptv"`})}
+        ${tileHTML({title:'IPTV & VOD', sub:'Playlists M3U, Xtream...', onclickAttr:`data-nav="iptv"`})}
         ${tileHTML({title:'YouTube', sub:'Chaînes & vidéos', onclickAttr:`data-nav="youtube"`})}
         ${tileHTML({title:'Sources', sub:'Configurer mes accès', onclickAttr:`data-nav="sources"`})}
       </div>
@@ -535,13 +561,11 @@ async function loadGuideData(){
   if(state.view === 'guide' || state.view === 'iptv') render();
 }
 
-/* Obtenir le programme actuel d'une chaîne IPTV */
 function getCurrentEpgForChannel(channelName, tvgId){
   if(!guideData) return null;
   const now = new Date();
   const targetClean = cleanChannelName(channelName);
   
-  // Chercher par tvg-id ou par nom épuré
   const matchedCh = guideData.channels.find(c => 
     (tvgId && c.id === tvgId) || (c.cleanName && c.cleanName === targetClean)
   );
@@ -551,22 +575,18 @@ function getCurrentEpgForChannel(channelName, tvgId){
   return progs.find(p => p.start <= now && p.stop > now);
 }
 
-/* Trouver le flux IPTV correspondant à une chaîne EPG */
 function findIptvMatchForEpg(epgChannelName, epgId){
   const targetClean = cleanChannelName(epgChannelName);
   
-  // Recherche M3U
   let m3uCh = (state.m3u.channels || []).find(c => (c.tvgId && c.tvgId === epgId) || cleanChannelName(c.name) === targetClean);
   if(m3uCh) return { title: m3uCh.name, source: 'M3U', type: 'hls', url: m3uCh.url };
 
-  // Recherche Xtream
   let xtCh = (state.xtream.streams || []).find(c => cleanChannelName(c.name) === targetClean);
   if(xtCh){
     const url = `${state.xtream.server}/live/${state.xtream.username}/${state.xtream.password}/${xtCh.id}.m3u8`;
     return { title: xtCh.name, source: 'Xtream', type: 'hls', url };
   }
 
-  // Recherche Stalker
   let stCh = (state.stalker.channels || []).find(c => cleanChannelName(c.name) === targetClean);
   if(stCh) return { title: stCh.name, source: 'Stalker', stalkerObj: stCh };
 
@@ -643,60 +663,14 @@ function renderGuide(){
 }
 
 /* ===================== YOUTUBE ===================== */
-function extractYouTubeId(input){
-  input = input.trim();
-  const patterns = [
-    /(?:v=|\/videos\/|embed\/|youtu\.be\/|\/live\/)([a-zA-Z0-9_-]{11})/,
-    /^([a-zA-Z0-9_-]{11})$/
-  ];
-  for(const p of patterns){ const m = input.match(p); if(m) return m[1]; }
-  return null;
-}
 let gAccessToken = null;
 let gTokenClient = null;
-let ytChannelView = null;
-
-function ensureGoogleAuth(){
-  if(!state.googleClientId){ alert('Configure ton Client ID Google dans Sources.'); switchView('sources'); return false; }
-  if(!window.google || !google.accounts){ alert('Google API en cours de chargement, réessaie.'); return false; }
-  if(!gTokenClient){
-    gTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: state.googleClientId,
-      scope: 'https://www.googleapis.com/auth/youtube.readonly',
-      callback: (resp)=>{
-        if(resp.error){ alert('Connexion Google refusée : '+resp.error); return; }
-        gAccessToken = resp.access_token;
-        fetchSubscriptions();
-      }
-    });
-  }
-  return true;
-}
-function connectGoogle(){ if(ensureGoogleAuth()) gTokenClient.requestAccessToken(); }
-
-async function fetchSubscriptions(){
-  const statusEl = document.getElementById('ytAuthStatus');
-  if(statusEl) statusEl.textContent = 'Chargement de vos abonnements...';
-  try{
-    const res = await fetch('https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50&order=alphabetical', {
-      headers:{ 'Authorization': 'Bearer '+gAccessToken }
-    });
-    const data = await res.json();
-    if(data.error) throw new Error(data.error.message);
-    state.subscriptions = (data.items||[]).map(it=>({
-      channelId: it.snippet.resourceId.channelId,
-      title: it.snippet.title,
-      thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url
-    }));
-    ytChannelView = null;
-    renderYoutube(); attachFocusNav();
-  }catch(e){ if(statusEl) statusEl.textContent = "Échec : "+e.message; }
-}
 
 async function searchYouTube(query){
   const key = state.youtubeApiKey;
-  if(!key){ alert('Configurez votre clé API YouTube dans Sources.'); switchView('sources'); return; }
+  if(!key){ alert('Configurez votre clé API YouTube dans Gestion sources.'); switchView('sources'); return; }
   const resultsEl = document.getElementById('ytSearchResults');
+  if(!resultsEl) return;
   resultsEl.innerHTML = '<div class="empty">Recherche en cours...</div>';
   try{
     const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=16&q=${encodeURIComponent(query)}&key=${key}`);
@@ -721,14 +695,12 @@ async function searchYouTube(query){
 }
 
 function renderYoutube(){
-  const items = state.youtube;
-  const connected = !!gAccessToken;
   viewEl.innerHTML = `
     <div class="hero" style="height:200px;">
       <div>
         <div class="tag">Regarder des vidéos</div>
         <h1>YouTube</h1>
-        <p>Recherchez des vidéos ou accédez à vos abonnements.</p>
+        <p>Recherchez des vidéos ou du contenu en ligne.</p>
       </div>
     </div>
     <div class="panel">
@@ -1050,13 +1022,23 @@ function goToPlayerView(){
   renderPlayerView();
   attachFocusNav();
 }
+
 function backFromPlayer(){
   if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
   if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
   clearInterval(window.__streamhubStallWatch);
+
+  const video = document.querySelector('#playerStage video');
+  if(video){
+    video.pause();
+    video.src = '';
+    video.load();
+  }
+
   playerData = null;
   switchView(previousView);
 }
+
 function renderPlayerView(){
   const p = playerData;
   viewEl.innerHTML = `
@@ -1179,7 +1161,7 @@ document.addEventListener('keydown', e=>{
 
 /* ===================== INIT ===================== */
 render();
-loadGuideData(); // Préchargement global de l'EPG au démarrage
+loadGuideData();
 </script>
 </body>
 </html>
