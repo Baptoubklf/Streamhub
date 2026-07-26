@@ -1774,7 +1774,8 @@ let mpegtsInstance = null;
 
 function loadVideoSource(video, url, viaProxy, streamHeaders){
   const statusEl = document.getElementById('playerStatusLine');
-  const isDirectFile = /\.(mp4|webm|ogg|mkv|avi|mov)(\?|$)/i.test(url) || /extension=(mp4|mkv|avi|mov|webm)\b/i.test(url);
+  const isDirectFile = /\.(mp4|webm|ogg)\b/i.test(url) || /extension=(mp4|webm)\b/i.test(url);
+  const isUnplayableContainer = /\.(mkv|avi|mov|wmv)\b/i.test(url) || /extension=(mkv|avi|mov|wmv)\b/i.test(url);
   // Beaucoup de portails Stalker/Ministra diffusent en MPEG-TS brut continu
   // (ex: "live.php?...&extension=ts") plutôt qu'en HLS segmenté (.m3u8).
   // Ni <video> natif ni HLS.js ne savent lire ça : il faut mpegts.js (MSE).
@@ -1794,6 +1795,20 @@ function loadVideoSource(video, url, viaProxy, streamHeaders){
     if(!settled) showRetryOptions(video, url, "Format non lisible directement par le navigateur, ou flux inaccessible.");
   };
   video.oncanplay = ()=>{ settled = true; clearTimeout(timeout); if(statusEl) statusEl.textContent=''; };
+
+  if(isUnplayableContainer){
+    clearTimeout(timeout);
+    const stage = video.closest('.player-stage');
+    if(stage){
+      stage.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:24px;gap:14px;">
+          <div style="font-size:15px;color:var(--text);max-width:480px;">Ce fichier est au format <strong>MKV/AVI</strong>, que les navigateurs ne savent pas lire nativement — contrairement au MP4. Il faut l'ouvrir avec un lecteur externe comme <strong>VLC</strong>.</div>
+          <a href="${actualUrl}" class="btn" style="text-decoration:none;">Ouvrir avec VLC / lecteur externe</a>
+          <div style="font-size:12px;color:var(--muted);max-width:480px;">Sur Android, ce lien devrait proposer d'ouvrir directement dans VLC s'il est installé. Sinon, copie l'URL et colle-la dans VLC → Lecture réseau.</div>
+        </div>`;
+    }
+    return;
+  }
 
   if(isRawMpegTs && window.mpegts && mpegts.getFeatureList().mseLivePlayback){
     if(statusEl) statusEl.textContent = 'Flux MPEG-TS détecté, lecture via mpegts.js...';
