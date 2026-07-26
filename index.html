@@ -251,7 +251,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
     <div class="nav-group-label">Catalogue</div>
     <div class="nav-item" data-view="iptv" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
-      <span class="nav-label">IPTV & VOD</span>
+      <span class="nav-label">IPTV, VOD & Séries</span>
     </div>
     <div class="nav-item" data-view="youtube" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
@@ -308,7 +308,7 @@ const DB = {
 let state = {
   youtube: DB.get('youtube', []),
   m3u: DB.get('m3u', {url:'', raw:'', channels:[]}),
-  xtream: DB.get('xtream', {server:'',username:'',password:'',categories:[],streams:[]}),
+  xtream: DB.get('xtream', {server:'',username:'',password:'',categories:[],streams:[], vod:[], series:[]}),
   stalker: DB.get('stalker', {portal:'',mac:'',channels:[]}),
   history: DB.get('history', []),
   proxy: DB.get('proxy', 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run'),
@@ -349,7 +349,7 @@ save();
 const titles = {
   home: 'À la une',
   guide: 'Guide TV (EPG)',
-  iptv: 'IPTV & VOD',
+  iptv: 'IPTV, VOD & Séries',
   youtube: 'YouTube',
   molotov: 'Molotov TV',
   sources: 'Gestion sources',
@@ -393,7 +393,7 @@ function render(){
   if(state.view==='home') renderHome();
   else if(state.view==='youtube') renderYoutube();
   else if(state.view==='molotov') renderMolotov();
-  else if(state.view==='iptv') renderIptv('m3u');
+  else if(state.view==='iptv') renderIptv('live');
   else if(state.view==='guide') renderGuide();
   else if(state.view==='sources') renderSources();
   attachFocusNav();
@@ -759,44 +759,110 @@ function renderMolotov(){
   });
 }
 
-/* ===================== IPTV (M3U / Xtream / Stalker) ===================== */
-let iptvSub = 'm3u';
+/* ===================== IPTV, VOD & SERIES ===================== */
+let iptvSub = 'live';
 function renderIptv(sub){
   iptvSub = sub || iptvSub;
   viewEl.innerHTML = `
     <div class="subtabs">
-      <div class="subtab ${iptvSub==='m3u'?'active':''}" data-sub="m3u">Playlist M3U</div>
-      <div class="subtab ${iptvSub==='xtream'?'active':''}" data-sub="xtream">Xtream Codes</div>
-      <div class="subtab ${iptvSub==='stalker'?'active':''}" data-sub="stalker">Stalker Portal</div>
+      <div class="subtab ${iptvSub==='live'?'active':''}" data-sub="live">📺 Chaînes TV</div>
+      <div class="subtab ${iptvSub==='vod'?'active':''}" data-sub="vod">🎬 Films (VOD)</div>
+      <div class="subtab ${iptvSub==='series'?'active':''}" data-sub="series">🍿 Séries</div>
+      <div class="subtab ${iptvSub==='config'?'active':''}" data-sub="config">⚙️ Config Xtream & Stalker</div>
     </div>
     <div id="iptvBody"></div>
   `;
   viewEl.querySelectorAll('.subtab').forEach(s=>s.addEventListener('click',()=>renderIptv(s.dataset.sub)));
   const body = document.getElementById('iptvBody');
-  if(iptvSub==='m3u') body.innerHTML = m3uPanel(); 
-  if(iptvSub==='xtream') body.innerHTML = xtreamPanel();
-  if(iptvSub==='stalker') body.innerHTML = stalkerPanel();
+  if(iptvSub==='live') body.innerHTML = livePanel(); 
+  if(iptvSub==='vod') body.innerHTML = vodPanel();
+  if(iptvSub==='series') body.innerHTML = seriesPanel();
+  if(iptvSub==='config') body.innerHTML = configIptvPanel();
   bindIptvEvents();
   attachFocusNav();
 }
 
-function m3uPanel(){
+function livePanel(){
   const chans = state.m3u.channels || [];
+  const xtChans = state.xtream.streams || [];
+  const stChans = state.stalker.channels || [];
+  const hasContent = chans.length || xtChans.length || stChans.length;
+
   return `
     <div class="panel">
-      <h3>Charger une playlist M3U</h3>
-      <div class="field"><label>URL (.m3u / .m3u8)</label><input id="m3uUrl" value="${escapeHTML(state.m3u.url||'')}" placeholder="https://..."></div>
-      <button class="btn" id="m3uLoadUrl">Charger</button>
-      <div class="note" id="m3uStatus">${chans.length? chans.length+' chaînes chargées.' : 'Aucune playlist.'}</div>
+      <h3>Charger une playlist M3U rapide</h3>
+      <div class="row-inline">
+        <div class="field" style="margin:0;"><input id="m3uUrl" value="${escapeHTML(state.m3u.url||'')}" placeholder="https://..."></div>
+        <button class="btn" id="m3uLoadUrl">Charger</button>
+      </div>
     </div>
     <div class="row">
-      <div class="row-title">Chaînes</div>
-      <div class="grid" id="m3uGrid">
-        ${chans.length? chans.map((c,i)=>{
+      <div class="row-title">Toutes vos chaînes en direct</div>
+      <div class="grid" id="liveGrid">
+        ${chans.map((c,i)=>{
           const epgProg = getCurrentEpgForChannel(c.name, c.tvgId);
-          return tileHTML({title:c.name, sub:c.group||'IPTV', badge:'M3U', thumb:c.logo, epg: epgProg? epgProg.title: null, onclickAttr:`data-idx="${i}"`});
-        }).join('') : '<div class="empty">Chargez une playlist.</div>'}
+          return tileHTML({title:c.name, sub:c.group||'IPTV', badge:'M3U', thumb:c.logo, epg: epgProg? epgProg.title: null, onclickAttr:`data-m3u-idx="${i}"`});
+        }).join('')}
+        ${xtChans.map((s,i)=>{
+          const epgProg = getCurrentEpgForChannel(s.name);
+          return tileHTML({title:s.name, sub:s.category||'Xtream', badge:'Xtream', thumb:s.icon, epg: epgProg? epgProg.title: null, onclickAttr:`data-xt-idx="${i}"`});
+        }).join('')}
+        ${stChans.map((c,i)=>{
+          const epgProg = getCurrentEpgForChannel(c.name);
+          return tileHTML({title:c.name, sub:'Stalker', badge:'Stalker', epg: epgProg? epgProg.title: null, onclickAttr:`data-st-idx="${i}"`});
+        }).join('')}
+        ${!hasContent ? '<div class="empty">Aucune chaîne trouvée. Chargez un fichier M3U ou configurez un compte Xtream / Stalker.</div>' : ''}
       </div>
+    </div>`;
+}
+
+function vodPanel(){
+  const vods = state.xtream.vod || [];
+  return `
+    <div class="row">
+      <div class="row-title">Catalogue Films (VOD)</div>
+      <div class="grid" id="vodGrid">
+        ${vods.length ? vods.map((v,i)=>tileHTML({
+          title: v.name, sub: 'Film', badge: 'VOD', thumb: v.stream_icon, onclickAttr: `data-vod-idx="${i}"`
+        })).join('') : '<div class="empty">Aucun film disponible. Connectez un compte Xtream Codes incluant la VOD dans l\'onglet Config.</div>'}
+      </div>
+    </div>`;
+}
+
+function seriesPanel(){
+  const series = state.xtream.series || [];
+  return `
+    <div class="row">
+      <div class="row-title">Catalogue Séries</div>
+      <div class="grid" id="seriesGrid">
+        ${series.length ? series.map((s,i)=>tileHTML({
+          title: s.name, sub: 'Série', badge: 'Série', thumb: s.cover, onclickAttr: `data-series-idx="${i}"`
+        })).join('') : '<div class="empty">Aucune série disponible. Connectez un compte Xtream Codes incluant les séries dans l\'onglet Config.</div>'}
+      </div>
+    </div>`;
+}
+
+function configIptvPanel(){
+  const x = state.xtream;
+  const st = state.stalker;
+  return `
+    <div class="panel">
+      <h3>Xtream Codes API (Live, VOD, Séries)</h3>
+      <div class="row-inline"><div class="field"><label>Serveur</label><input id="xServer" value="${escapeHTML(x.server||'')}"></div></div>
+      <div class="row-inline">
+        <div class="field"><label>Identifiant</label><input id="xUser" value="${escapeHTML(x.username||'')}"></div>
+        <div class="field"><label>Mot de passe</label><input id="xPass" type="password" value="${escapeHTML(x.password||'')}"></div>
+      </div>
+      <button class="btn" id="xConnect">Synchroniser Xtream</button>
+      <div class="note" id="xStatus" style="display:none;"></div>
+    </div>
+    
+    <div class="panel">
+      <h3>Stalker Portal</h3>
+      <div class="field"><label>URL Portail</label><input id="stPortal" value="${escapeHTML(st.portal||'')}"></div>
+      <div class="field"><label>Adresse MAC</label><input id="stMac" value="${escapeHTML(st.mac||'')}"></div>
+      <button class="btn" id="stConnect">Connexion Stalker</button>
+      <div class="note" id="stStatus" style="display:none;"></div>
     </div>`;
 }
 
@@ -818,69 +884,38 @@ function parseM3U(text){
   return channels;
 }
 
-function xtreamPanel(){
-  const x = state.xtream;
-  const streams = x.streams || [];
-  return `
-    <div class="panel">
-      <h3>Xtream Codes API</h3>
-      <div class="row-inline"><div class="field"><label>Serveur</label><input id="xServer" value="${escapeHTML(x.server||'')}"></div></div>
-      <div class="row-inline">
-        <div class="field"><label>Identifiant</label><input id="xUser" value="${escapeHTML(x.username||'')}"></div>
-        <div class="field"><label>Mot de passe</label><input id="xPass" type="password" value="${escapeHTML(x.password||'')}"></div>
-      </div>
-      <button class="btn" id="xConnect">Se connecter</button>
-      <div class="note" id="xStatus" style="display:none;"></div>
-    </div>
-    <div class="row">
-      <div class="row-title">Chaînes en direct</div>
-      <div class="grid" id="xGrid">
-        ${streams.length? streams.map((s,i)=>{
-          const epgProg = getCurrentEpgForChannel(s.name);
-          return tileHTML({title:s.name, sub:s.category||'Xtream', badge:'Xtream', thumb:s.icon, epg: epgProg? epgProg.title: null, onclickAttr:`data-idx="${i}"`});
-        }).join('') : '<div class="empty">Connectez-vous pour voir vos chaînes.</div>'}
-      </div>
-    </div>`;
-}
-
 async function xtreamConnect(){
   const server = document.getElementById('xServer').value.replace(/\/$/,'');
   const username = document.getElementById('xUser').value;
   const password = document.getElementById('xPass').value;
   const statusEl = document.getElementById('xStatus');
-  statusEl.style.display='block'; statusEl.textContent = 'Connexion...';
+  statusEl.style.display='block'; statusEl.textContent = 'Connexion et récupération du catalogue (Live, VOD, Séries)...';
   try{
-    const url = `${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`;
-    const res = await proxied(url);
-    const data = await res.json();
-    const streams = data.map(s=>({ name: s.name, category: s.category_id, icon: s.stream_icon, id: s.stream_id }));
-    state.xtream = {server, username, password, streams};
-    save();
-    statusEl.textContent = streams.length+' chaînes chargées.';
-    renderIptv('xtream');
-  }catch(e){ statusEl.textContent = "Erreur : " + e.message; }
-}
+    // Live Streams
+    const liveRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`);
+    const liveData = await liveRes.json();
+    const streams = liveData.map(s=>({ name: s.name, category: s.category_id, icon: s.stream_icon, id: s.stream_id }));
 
-function stalkerPanel(){
-  const st = state.stalker;
-  const chans = st.channels || [];
-  return `
-    <div class="panel">
-      <h3>Stalker Portal</h3>
-      <div class="field"><label>URL Portail</label><input id="stPortal" value="${escapeHTML(st.portal||'')}"></div>
-      <div class="field"><label>Adresse MAC</label><input id="stMac" value="${escapeHTML(st.mac||'')}"></div>
-      <button class="btn" id="stConnect">Se connecter</button>
-      <div class="note" id="stStatus" style="display:none;"></div>
-    </div>
-    <div class="row">
-      <div class="row-title">Chaînes TV</div>
-      <div class="grid" id="stGrid">
-        ${chans.length? chans.map((c,i)=>{
-          const epgProg = getCurrentEpgForChannel(c.name);
-          return tileHTML({title:c.name, sub:'Stalker', badge:'TV', epg: epgProg? epgProg.title: null, onclickAttr:`data-idx="${i}"`});
-        }).join('') : '<div class="empty">Connectez-vous.</div>'}
-      </div>
-    </div>`;
+    // VOD
+    let vod = [];
+    try {
+      const vodRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_streams`);
+      const vodData = await vodRes.json();
+      if(Array.isArray(vodData)) vod = vodData;
+    } catch(e){}
+
+    // Séries
+    let series = [];
+    try {
+      const seriesRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series`);
+      const seriesData = await seriesRes.json();
+      if(Array.isArray(seriesData)) series = seriesData;
+    } catch(e){}
+
+    state.xtream = {server, username, password, streams, vod, series};
+    save();
+    statusEl.textContent = `Succès ! ${streams.length} Chaînes, ${vod.length} Films et ${series.length} Séries synchronisés.`;
+  }catch(e){ statusEl.textContent = "Erreur : " + e.message; }
 }
 
 async function stalkerConnect(){
@@ -902,7 +937,7 @@ async function stalkerConnect(){
     state.stalker = { portal, mac, channels: list, token };
     save();
     statusEl.textContent = list.length + ' chaînes chargées.';
-    renderIptv('stalker');
+    renderIptv('live');
   }catch(e){ statusEl.textContent = "Erreur : " + e.message; }
 }
 
@@ -935,34 +970,31 @@ function bindIptvEvents(){
       const res = await fetch(url);
       const text = await res.text();
       state.m3u = {url, raw:text, channels: parseM3U(text)};
-      save(); renderIptv('m3u');
+      save(); renderIptv('live');
     }catch(e){ alert('Erreur M3U : '+e.message); }
   });
 
-  viewEl.querySelectorAll('#m3uGrid .tile[data-idx]').forEach(t=>{
+  // Events Chaînes
+  viewEl.querySelectorAll('#liveGrid .tile[data-m3u-idx]').forEach(t=>{
     t.addEventListener('click',()=>{
-      const c = state.m3u.channels[t.dataset.idx];
+      const c = state.m3u.channels[t.dataset.m3uIdx];
       openVideoPlayer(c.name, c.url, 'M3U');
       pushHistory({title:c.name, source:'M3U', type:'hls', url:c.url});
     });
   });
 
-  const xBtn = document.getElementById('xConnect');
-  if(xBtn) xBtn.addEventListener('click', xtreamConnect);
-  viewEl.querySelectorAll('#xGrid .tile[data-idx]').forEach(t=>{
+  viewEl.querySelectorAll('#liveGrid .tile[data-xt-idx]').forEach(t=>{
     t.addEventListener('click',()=>{
-      const s = state.xtream.streams[t.dataset.idx];
+      const s = state.xtream.streams[t.dataset.xtIdx];
       const url = `${state.xtream.server}/live/${state.xtream.username}/${state.xtream.password}/${s.id}.m3u8`;
       openVideoPlayer(s.name, url, 'Xtream');
       pushHistory({title:s.name, source:'Xtream', type:'hls', url});
     });
   });
 
-  const stBtn = document.getElementById('stConnect');
-  if(stBtn) stBtn.addEventListener('click', stalkerConnect);
-  viewEl.querySelectorAll('#stGrid .tile[data-idx]').forEach(t=>{
+  viewEl.querySelectorAll('#liveGrid .tile[data-st-idx]').forEach(t=>{
     t.addEventListener('click', async ()=>{
-      const c = state.stalker.channels[t.dataset.idx];
+      const c = state.stalker.channels[t.dataset.stIdx];
       try{
         const url = await resolveStalkerStreamUrl(c);
         openVideoPlayer(c.name, url, 'Stalker', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
@@ -970,6 +1002,32 @@ function bindIptvEvents(){
       }catch(e){ alert("Erreur Stalker : "+e.message); }
     });
   });
+
+  // Events VOD
+  viewEl.querySelectorAll('#vodGrid .tile[data-vod-idx]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const v = state.xtream.vod[t.dataset.vodIdx];
+      const ext = v.container_extension || 'mp4';
+      const url = `${state.xtream.server}/movie/${state.xtream.username}/${state.xtream.password}/${v.stream_id}.${ext}`;
+      openVideoPlayer(v.name, url, 'Xtream VOD');
+      pushHistory({title:v.name, source:'VOD', type:'video', url});
+    });
+  });
+
+  // Events Séries
+  viewEl.querySelectorAll('#seriesGrid .tile[data-series-idx]').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const s = state.xtream.series[t.dataset.seriesIdx];
+      alert(`Série : ${s.name}\nIntégration du sélecteur d'épisodes en cours.`);
+    });
+  });
+
+  // Config Xtream / Stalker
+  const xBtn = document.getElementById('xConnect');
+  if(xBtn) xBtn.addEventListener('click', xtreamConnect);
+
+  const stBtn = document.getElementById('stConnect');
+  if(stBtn) stBtn.addEventListener('click', stalkerConnect);
 }
 
 /* ===================== SOURCES / SETTINGS ===================== */
