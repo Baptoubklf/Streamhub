@@ -107,7 +107,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 
 /* ===== Rows / tiles ===== */
 .row{margin-bottom:34px;}
-.row-title{font-size:16px;font-weight:600;margin-bottom:14px;color:#C9D2DC;}
+.row-title{font-size:16px;font-weight:600;margin-bottom:14px;color:#C9D2DC;display:flex;justify-content:space-between;align-items:center;}
 .tiles{display:flex;gap:16px;overflow-x:auto;padding:8px 2px 14px;}
 .tiles::-webkit-scrollbar{height:6px;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;}
@@ -159,7 +159,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   border:1px solid rgba(255,255,255,.05);
 }
 .hero-netflix{
-  height:340px;
+  height:300px;
   background:
     linear-gradient(180deg, rgba(10,10,10,0) 40%, rgba(10,10,10,1) 100%),
     radial-gradient(circle at 15% 25%, rgba(0,174,239,.35), transparent 55%),
@@ -179,7 +179,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 .hero p{color:var(--muted);max-width:520px;font-size:14px;line-height:1.5;}
 .hero .tag{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:1.5px;margin-bottom:10px;text-transform:uppercase;}
 
-/* ===== Forms ===== */
+/* ===== Forms & Categories ===== */
 .panel{background:var(--surface);border-radius:12px;padding:24px;margin-bottom:24px;border:1px solid rgba(255,255,255,.05);}
 .panel h3{font-size:15px;margin-bottom:16px;color:var(--amber);}
 .field{margin-bottom:14px;}
@@ -198,12 +198,21 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 .btn.secondary{background:transparent;border:1px solid #2a3340;color:var(--text);}
 .btn.danger{background:transparent;border:1px solid var(--danger);color:var(--danger);}
 .btn:hover{filter:brightness(1.1);}
+
 .subtabs{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;}
 .subtab{
   padding:8px 16px;border-radius:20px;background:var(--surface2);color:var(--muted);
   font-size:13px;cursor:pointer;font-weight:600;
 }
 .subtab.active{background:var(--amber);color:#FFFFFF;}
+
+.cat-bar{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:20px;}
+.cat-chip{
+  padding:6px 14px;border-radius:16px;background:rgba(255,255,255,0.05);color:var(--muted);
+  font-size:12px;cursor:pointer;white-space:nowrap;border:1px solid transparent;
+}
+.cat-chip.active{background:rgba(0,174,239,0.2);color:var(--amber);border-color:var(--amber);}
+
 .note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-left:3px solid var(--teal);border-radius:4px;}
 .empty{color:var(--muted);font-size:13px;padding:20px 0;}
 
@@ -211,6 +220,9 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:20px;padding:8px 16px;width:260px;
 }
 .search-bar input{background:transparent;border:none;color:var(--text);font-size:13px;width:100%;outline:none;}
+
+/* ===== Settings Layout ===== */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px;}
 
 /* ===== Player Page ===== */
 .player-page{display:flex;flex-direction:column;height:100%;}
@@ -276,7 +288,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
     <div class="nav-group-label">Configuration</div>
     <div class="nav-item" data-view="sources" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
-      <span class="nav-label">Gestion sources</span>
+      <span class="nav-label">Réglages</span>
     </div>
   </nav>
 
@@ -284,7 +296,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
     <div class="topbar">
       <h2 id="viewTitle">À la une</h2>
       <div style="display:flex;align-items:center;gap:18px;">
-        <div class="search-bar"><span>🔍</span><input id="globalSearch" placeholder="Rechercher une chaîne, une vidéo..."></div>
+        <div class="search-bar"><span>🔍</span><input id="globalSearch" placeholder="Rechercher..."></div>
         <div class="clock" id="clock">--:--</div>
       </div>
     </div>
@@ -293,7 +305,18 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 </div>
 
 <script>
-/* ===================== ESCAPE HTML (XSS SAFE) ===================== */
+/* ===================== HELPER FR FILTER ===================== */
+function isFrenchContent(name, category) {
+  const text = `${name || ''} ${category || ''}`.toUpperCase();
+  // Exclusion si explicitement un autre pays
+  if (/(?:\||\b)(?:EN|UK|US|ES|IT|DE|AR|PT|NL|TR|RO|PL|AL|RU)(?:\||\b)/.test(text) && !/(?:\||\b)(?:FR|FRENCH|FRANCE)(?:\||\b)/.test(text)) {
+    return false;
+  }
+  // Inclusion des mots-clés FR courants
+  return /(?:\||\b)(?:FR|FRENCH|FRANCE|VF|VOSTFR)(?:\||\b)/i.test(text) || !/(?:\||\b)[A-Z]{2,3}(?:\||\b)/.test(text);
+}
+
+/* ===================== ESCAPE HTML ===================== */
 function escapeHTML(str){
   return String(str || '').replace(/[&<>"']/g, match => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -308,14 +331,13 @@ const DB = {
 let state = {
   youtube: DB.get('youtube', []),
   m3u: DB.get('m3u', {url:'', raw:'', channels:[]}),
-  xtream: DB.get('xtream', {server:'',username:'',password:'',categories:[],streams:[], vod:[], series:[]}),
+  xtream: DB.get('xtream', {server:'',username:'',password:'',categories:[],streams:[], vod:[], vodCats:[], series:[], seriesCats:[]}),
   stalker: DB.get('stalker', {portal:'',mac:'',channels:[]}),
   history: DB.get('history', []),
   proxy: DB.get('proxy', 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run'),
-  googleClientId: DB.get('googleClientId', '654265541879-4f8mb6u2m507aiju0iu87r9dh5p8s8dr.apps.googleusercontent.com'),
-  youtubeApiKey: DB.get('youtubeApiKey', 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik'),
+  googleClientId: DB.get('googleClientId', ''),
+  youtubeApiKey: DB.get('youtubeApiKey', ''),
   epgUrl: DB.get('epgUrl', 'https://xmltvfr.fr/xmltv/xmltv_fr.xml.gz'),
-  subscriptions: [],
   view: 'home',
 };
 
@@ -338,13 +360,6 @@ function pushHistory(item){
   if(typeof updateMiniPreview === 'function') updateMiniPreview();
 }
 
-if(!state.proxy) state.proxy = 'https://streamhub-proxy.onrender.com';
-if(!state.youtubeApiKey) state.youtubeApiKey = 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik';
-if(!state.epgUrl || state.epgUrl.includes('iptv-org/epg/gh-pages') || state.epgUrl.includes('epgshare01.online') || state.epgUrl.includes('xmltv_tnt.zip')){
-  state.epgUrl = 'https://xmltvfr.fr/xmltv/xmltv_fr.xml.gz';
-}
-save();
-
 /* ===================== NAV ===================== */
 const titles = {
   home: 'À la une',
@@ -352,7 +367,7 @@ const titles = {
   iptv: 'IPTV, VOD & Séries',
   youtube: 'YouTube',
   molotov: 'Molotov TV',
-  sources: 'Gestion sources',
+  sources: 'Réglages',
   player: 'Lecture'
 };
 
@@ -413,62 +428,82 @@ function tileHTML({title, sub, badge, thumb, epg, onclickAttr}){
   </div>`;
 }
 
-/* ===================== GLOBAL SEARCH ===================== */
-document.getElementById('globalSearch')?.addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter'){
-    const q = e.target.value.trim();
-    if(!q) return;
-    if(state.view === 'youtube'){
-      searchYouTube(q);
-    } else {
-      switchView('iptv');
-    }
-  }
-});
-
 /* ===================== HOME ===================== */
 function renderHome(){
+  if(!guideData && !guideLoading && !guideError) loadGuideData();
+
   const recent = state.history;
   const lastWatched = recent[0];
+
+  // Extraction de quelques programmes TV en direct pour l'accueil
+  let liveTvNow = [];
+  if (guideData && guideData.channels) {
+    const now = new Date();
+    liveTvNow = guideData.channels.map(ch => {
+      const progs = guideData.programmes.get(ch.id) || [];
+      const current = progs.find(p => p.start <= now && p.stop > now);
+      const iptvMatch = findIptvMatchForEpg(ch.name, ch.id);
+      if (current && iptvMatch) {
+        return { channel: ch.name, title: current.title, match: iptvMatch };
+      }
+      return null;
+    }).filter(Boolean).slice(0, 10);
+  }
+
   viewEl.innerHTML = `
     <div class="hero hero-netflix">
       <div>
-        <div class="tag">Votre hub personnel</div>
-        <h1>Toutes vos sources, un seul écran</h1>
-        <p>YouTube, Molotov TV et vos flux IPTV réunis dans une interface moderne. Configurez vos accès dans l'onglet <strong>Gestion sources</strong>.</p>
+        <div class="tag">Vos médias en français</div>
+        <h1>StreamHub TV</h1>
+        <p>Toutes vos chaînes TV, films et séries VOD réunis en un seul endroit.</p>
         <div class="hero-actions">
-          ${lastWatched ? `<button class="hero-btn hero-btn-primary" id="heroPlay">▶ Lecture</button>` : ''}
-          <button class="hero-btn hero-btn-secondary" id="heroInfo">ℹ Régler mes sources</button>
+          ${lastWatched ? `<button class="hero-btn hero-btn-primary" id="heroPlay">▶ Reprendre</button>` : ''}
+          <button class="hero-btn hero-btn-secondary" id="heroGuide">📺 Guide TV</button>
         </div>
       </div>
     </div>
+
+    <!-- NOUVELLE SECTION : TV EN DIRECT SUR L'ACCUEIL -->
     <div class="row">
-      <div class="row-title">Reprendre la lecture</div>
-      <div class="tiles" id="recentRow">
-        ${recent.length? recent.map(r=>tileHTML({title:r.title, sub:r.source, badge:r.source, onclickAttr:`data-play='${encodeURIComponent(JSON.stringify(r))}'`})).join(''): '<div class="empty">Rien pour l\'instant — lancez une chaîne ou une vidéo.</div>'}
+      <div class="row-title">
+        <span> En ce moment à la TV</span>
+        <button class="btn secondary" style="padding:4px 10px;font-size:11px;" id="homeSeeAllEpg">Tout le guide</button>
+      </div>
+      <div class="tiles">
+        ${liveTvNow.length ? liveTvNow.map(item => tileHTML({
+            title: item.title,
+            sub: item.channel,
+            badge: 'DIRECT',
+            onclickAttr: `data-play-guide="${encodeURIComponent(JSON.stringify(item.match))}"`
+          })).join('') : `<div class="empty">${guideLoading ? 'Chargement des programmes...' : 'Aucun programme TV détecté ou EPG non chargé.'}</div>`
+        }
       </div>
     </div>
+
     <div class="row">
-      <div class="row-title">Accès rapide</div>
+      <div class="row-title">Récemment regardés</div>
       <div class="tiles">
-        ${tileHTML({title:'Guide TV', sub:'Programme en direct', onclickAttr:`data-nav="guide"`})}
-        ${tileHTML({title:'IPTV & VOD', sub:'Playlists M3U, Xtream...', onclickAttr:`data-nav="iptv"`})}
-        ${tileHTML({title:'YouTube', sub:'Chaînes & vidéos', onclickAttr:`data-nav="youtube"`})}
-        ${tileHTML({title:'Sources', sub:'Configurer mes accès', onclickAttr:`data-nav="sources"`})}
+        ${recent.length? recent.map(r=>tileHTML({title:r.title, sub:r.source, badge:r.source, onclickAttr:`data-play='${encodeURIComponent(JSON.stringify(r))}'`})).join(''): '<div class="empty">Aucun historique.</div>'}
       </div>
     </div>`;
-  viewEl.querySelectorAll('[data-nav]').forEach(t=>t.addEventListener('click',()=>switchView(t.dataset.nav)));
+
   viewEl.querySelectorAll('[data-play]').forEach(t=>t.addEventListener('click',()=>{
-    const item = JSON.parse(decodeURIComponent(t.dataset.play));
-    playItem(item);
+    playItem(JSON.parse(decodeURIComponent(t.dataset.play)));
   }));
-  const heroPlay = document.getElementById('heroPlay');
-  if(heroPlay) heroPlay.addEventListener('click', ()=> playItem(lastWatched));
-  const heroInfo = document.getElementById('heroInfo');
-  if(heroInfo) heroInfo.addEventListener('click', ()=> switchView('sources'));
+
+  viewEl.querySelectorAll('[data-play-guide]').forEach(t=>{
+    t.addEventListener('click', async ()=>{
+      const match = JSON.parse(decodeURIComponent(t.dataset.playGuide));
+      playItem(match);
+    });
+  });
+
+  document.getElementById('heroPlay')?.addEventListener('click', ()=> playItem(lastWatched));
+  document.getElementById('heroGuide')?.addEventListener('click', ()=> switchView('guide'));
+  document.getElementById('homeSeeAllEpg')?.addEventListener('click', ()=> switchView('guide'));
 }
 
-/* ===================== GUIDE TV (EPG / XMLTV) & MATCHING IPTV ===================== */
+/* ===================== GUIDE TV (EPG) ===================== */
 let guideData = null; 
 let guideLoading = false;
 let guideError = null;
@@ -485,7 +520,7 @@ function parseXmltvDate(str){
 
 function cleanChannelName(str){
   return (str || '').toLowerCase()
-    .replace(/fhd|hd|sd|4k|1080p|720p|fr|france|\|\s*fr/gi, '')
+    .replace(/fhd|hd|sd|4k|1080p|fr|france|\|\s*fr/gi, '')
     .replace(/[^a-z0-9]/g, '')
     .trim();
 }
@@ -495,12 +530,11 @@ async function fetchGuideText(url){
   const isZip = /\.zip(\?|$)/i.test(url);
   async function tryFetch(targetUrl){
     const res = await fetch(targetUrl);
-    if(!res.ok) throw new Error(`Le serveur a répondu avec le statut ${res.status}.`);
+    if(!res.ok) throw new Error(`Code erreur ${res.status}`);
     if(isZip){
       const buf = await res.arrayBuffer();
       const zip = await JSZip.loadAsync(buf);
       const xmlFile = Object.values(zip.files).find(f => !f.dir && /\.xml$/i.test(f.name));
-      if(!xmlFile) throw new Error('Aucun fichier .xml trouvé dans l\'archive .zip.');
       return xmlFile.async('string');
     }
     if(isGzip){
@@ -509,9 +543,8 @@ async function fetchGuideText(url){
     }
     return res.text();
   }
-  try{
-    return await tryFetch(url);
-  }catch(networkErr){
+  try{ return await tryFetch(url); }
+  catch(networkErr){
     const proxy = (state.proxy||'').trim();
     if(!proxy) throw networkErr;
     const proxied = proxy.endsWith('=')||proxy.endsWith('/') ? proxy+encodeURIComponent(url) : (()=>{ const p=new URL(proxy); p.searchParams.set('url', url); return p.toString(); })();
@@ -522,14 +555,12 @@ async function fetchGuideText(url){
 async function loadGuideData(){
   if(guideLoading) return;
   guideLoading = true; guideError = null;
-  if(state.view === 'guide') renderGuide();
   try{
     const url = state.epgUrl;
-    if(!url) throw new Error('Aucune source EPG configurée (onglet Sources).');
+    if(!url) throw new Error('Aucune URL EPG.');
     const text = await fetchGuideText(url);
     const doc = new DOMParser().parseFromString(text, 'text/xml');
-    if(doc.querySelector('parsererror')) throw new Error('Le fichier XMLTV reçu est invalide.');
-
+    
     const channels = Array.from(doc.querySelectorAll('channel')).map(ch=>({
       id: ch.getAttribute('id'),
       name: ch.querySelector('display-name')?.textContent || ch.getAttribute('id'),
@@ -545,31 +576,20 @@ async function loadGuideData(){
       if(!start || !stop) return;
       if(stop < now || start > new Date(now.getTime()+24*3600*1000)) return;
       if(!programmes.has(chId)) programmes.set(chId, []);
-      programmes.get(chId).push({
-        start, stop,
-        title: p.querySelector('title')?.textContent || 'Sans titre',
-        desc: p.querySelector('desc')?.textContent || ''
-      });
+      programmes.get(chId).push({ start, stop, title: p.querySelector('title')?.textContent || 'Sans titre' });
     });
-    programmes.forEach(list => list.sort((a,b)=>a.start-b.start));
 
     guideData = { channels, programmes };
-  }catch(e){
-    guideError = e.message;
-  }
+  }catch(e){ guideError = e.message; }
   guideLoading = false;
-  if(state.view === 'guide' || state.view === 'iptv') render();
+  if(state.view === 'guide' || state.view === 'home') render();
 }
 
 function getCurrentEpgForChannel(channelName, tvgId){
   if(!guideData) return null;
   const now = new Date();
   const targetClean = cleanChannelName(channelName);
-  
-  const matchedCh = guideData.channels.find(c => 
-    (tvgId && c.id === tvgId) || (c.cleanName && c.cleanName === targetClean)
-  );
-  
+  const matchedCh = guideData.channels.find(c => (tvgId && c.id === tvgId) || (c.cleanName && c.cleanName === targetClean));
   if(!matchedCh) return null;
   const progs = guideData.programmes.get(matchedCh.id) || [];
   return progs.find(p => p.start <= now && p.stop > now);
@@ -577,7 +597,6 @@ function getCurrentEpgForChannel(channelName, tvgId){
 
 function findIptvMatchForEpg(epgChannelName, epgId){
   const targetClean = cleanChannelName(epgChannelName);
-  
   let m3uCh = (state.m3u.channels || []).find(c => (c.tvgId && c.tvgId === epgId) || cleanChannelName(c.name) === targetClean);
   if(m3uCh) return { title: m3uCh.name, source: 'M3U', type: 'hls', url: m3uCh.url };
 
@@ -586,189 +605,57 @@ function findIptvMatchForEpg(epgChannelName, epgId){
     const url = `${state.xtream.server}/live/${state.xtream.username}/${state.xtream.password}/${xtCh.id}.m3u8`;
     return { title: xtCh.name, source: 'Xtream', type: 'hls', url };
   }
-
-  let stCh = (state.stalker.channels || []).find(c => cleanChannelName(c.name) === targetClean);
-  if(stCh) return { title: stCh.name, source: 'Stalker', stalkerObj: stCh };
-
   return null;
 }
 
-function fmtTime(d){
-  return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-}
+function fmtTime(d){ return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
 
 function renderGuide(){
-  if(!guideData && !guideLoading && !guideError) loadGuideData();
-
   viewEl.innerHTML = `
-    <div class="hero" style="height:180px;">
+    <div class="hero" style="height:160px;">
       <div>
         <div class="tag">Programme TV</div>
-        <h1>Guide TV & Directs</h1>
-        <p>Retrouvez le programme de vos chaînes IPTV préférées et lancez le direct en un clic.</p>
+        <h1>Guide des chaînes</h1>
       </div>
     </div>
-    ${guideLoading ? `<div class="empty">Chargement du guide TV (XMLTV)...</div>` : ''}
-    ${guideError ? `<div class="note" style="border-left-color:var(--danger);">Erreur Guide TV : ${escapeHTML(guideError)}</div>` : ''}
+    ${guideLoading ? `<div class="empty">Chargement du guide TV...</div>` : ''}
     ${guideData ? `
-      <button class="btn secondary" id="guideRefreshBtn" style="margin-bottom:18px;">🔄 Actualiser l'EPG</button>
       <div class="grid">
-        ${guideData.channels
-          .filter(ch => guideData.programmes.has(ch.id))
-          .map(ch=>{
+        ${guideData.channels.filter(ch => guideData.programmes.has(ch.id)).map(ch=>{
             const progs = guideData.programmes.get(ch.id);
             const now = new Date();
             const current = progs.find(p=>p.start<=now && p.stop>now);
-            const next = progs.find(p=>p.start>now);
             const iptvMatch = findIptvMatchForEpg(ch.name, ch.id);
-
-            if(!current && !next) return '';
+            if(!current) return '';
             return `
-              <div class="tile" tabindex="0" ${iptvMatch ? `data-play-guide="${encodeURIComponent(JSON.stringify(iptvMatch))}"` : ''} style="height:auto;min-height:130px;padding:14px;display:flex;flex-direction:column;justify-content:flex-start;${iptvMatch?'cursor:pointer;':'cursor:default;'}">
-                <div class="tile-title" style="font-size:14px;color:var(--amber);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-                  <span>${escapeHTML(ch.name)}</span>
-                  ${iptvMatch ? `<span class="tile-badge" style="position:static;">▶ En direct</span>` : ''}
-                </div>
-                ${current ? `
-                  <div style="font-size:12px;color:var(--muted);">${fmtTime(current.start)}–${fmtTime(current.stop)} · En cours</div>
-                  <div style="font-size:13px;font-weight:600;margin:2px 0 8px;">${escapeHTML(current.title)}</div>
-                ` : ''}
-                ${next ? `
-                  <div style="font-size:11px;color:var(--muted);">Ensuite (${fmtTime(next.start)}) : ${escapeHTML(next.title)}</div>
-                ` : ''}
+              <div class="tile" tabindex="0" ${iptvMatch ? `data-play-guide="${encodeURIComponent(JSON.stringify(iptvMatch))}"` : ''} style="height:auto;padding:14px;${iptvMatch?'cursor:pointer;':''}">
+                <div class="tile-title" style="color:var(--amber);margin-bottom:6px;">${escapeHTML(ch.name)}</div>
+                <div style="font-size:11px;color:var(--muted);">${fmtTime(current.start)} - ${fmtTime(current.stop)}</div>
+                <div style="font-size:13px;font-weight:600;margin-top:4px;">${escapeHTML(current.title)}</div>
               </div>`;
           }).join('')}
-      </div>
-    ` : ''}
+      </div>` : ''}
   `;
-  
-  const refreshBtn = document.getElementById('guideRefreshBtn');
-  if(refreshBtn) refreshBtn.addEventListener('click', loadGuideData);
 
   viewEl.querySelectorAll('[data-play-guide]').forEach(t=>{
-    t.addEventListener('click', async ()=>{
-      const match = JSON.parse(decodeURIComponent(t.dataset.playGuide));
-      if(match.source === 'Stalker'){
-        try{
-          const url = await resolveStalkerStreamUrl(match.stalkerObj);
-          openVideoPlayer(match.title, url, 'Stalker', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
-          pushHistory({title:match.title, source:'Stalker', type:'hls', url});
-        }catch(e){ alert("Erreur Stalker : " + e.message); }
-      } else {
-        openVideoPlayer(match.title, match.url, match.source);
-        pushHistory(match);
-      }
+    t.addEventListener('click', ()=>{
+      playItem(JSON.parse(decodeURIComponent(t.dataset.playGuide)));
     });
   });
 }
 
-/* ===================== YOUTUBE ===================== */
-let gAccessToken = null;
-let gTokenClient = null;
-
-async function searchYouTube(query){
-  const key = state.youtubeApiKey;
-  if(!key){ alert('Configurez votre clé API YouTube dans Gestion sources.'); switchView('sources'); return; }
-  const resultsEl = document.getElementById('ytSearchResults');
-  if(!resultsEl) return;
-  resultsEl.innerHTML = '<div class="empty">Recherche en cours...</div>';
-  try{
-    const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=16&q=${encodeURIComponent(query)}&key=${key}`);
-    const data = await res.json();
-    if(data.error) throw new Error(data.error.message);
-    const videos = (data.items||[]).map(it=>({
-      id: it.id.videoId, title: it.snippet.title, channel: it.snippet.channelTitle,
-      thumb: it.snippet.thumbnails?.medium?.url
-    }));
-    resultsEl.innerHTML = videos.length ? videos.map((v,i)=>tileHTML({
-      title:v.title, sub:v.channel, thumb:v.thumb, onclickAttr:`data-res="${i}"`
-    })).join('') : '<div class="empty">Aucun résultat.</div>';
-    resultsEl.querySelectorAll('.tile[data-res]').forEach(t=>{
-      t.addEventListener('click',()=>{
-        const v = videos[t.dataset.res];
-        openFramePlayer(v.title, `https://www.youtube.com/embed/${v.id}?autoplay=1`);
-        pushHistory({title:v.title, source:'YouTube', type:'youtube', id:v.id});
-      });
-    });
-    attachFocusNav();
-  }catch(e){ resultsEl.innerHTML = `<div class="empty">Erreur : ${escapeHTML(e.message)}</div>`; }
-}
-
-function renderYoutube(){
-  viewEl.innerHTML = `
-    <div class="hero" style="height:200px;">
-      <div>
-        <div class="tag">Regarder des vidéos</div>
-        <h1>YouTube</h1>
-        <p>Recherchez des vidéos ou du contenu en ligne.</p>
-      </div>
-    </div>
-    <div class="panel">
-      <h3>Rechercher une vidéo</h3>
-      <div class="row-inline">
-        <div class="field"><label>Mot-clé, titre...</label><input id="ytSearchInput" placeholder="Ex: actu, musique..."></div>
-      </div>
-      <button class="btn" id="ytSearchBtn">Rechercher</button>
-    </div>
-    <div class="row">
-      <div class="row-title">Résultats</div>
-      <div class="grid" id="ytSearchResults"><div class="empty">Lancez une recherche.</div></div>
-    </div>`;
-  document.getElementById('ytSearchBtn').addEventListener('click',()=>{
-    const q = document.getElementById('ytSearchInput').value.trim();
-    if(q) searchYouTube(q);
-  });
-}
-
-/* ===================== MOLOTOV ===================== */
-const MOLOTOV_CHANNELS = [
-  {name:'TF1', color:'#0055A4'}, {name:'France 2', color:'#E4032E'}, {name:'France 3', color:'#003D7C'},
-  {name:'Canal+', color:'#000000'}, {name:'M6', color:'#F5A800'}, {name:'Arte', color:'#E2001A'},
-  {name:'BFM TV', color:'#E30613'}, {name:'CNews', color:'#0A2F5C'}, {name:'W9', color:'#7B2D8E'},
-  {name:'TMC', color:'#F39200'}, {name:'C8', color:'#D4145A'}, {name:"L'Équipe", color:'#004A99'},
-  {name:'France 5', color:'#00A19A'}, {name:'RMC Story', color:'#FF5900'}, {name:'Gulli', color:'#FFCB05'}
-];
-
-function renderMolotov(){
-  viewEl.innerHTML = `
-    <div class="hero" style="height:200px;">
-      <div>
-        <div class="tag">TV en direct</div>
-        <h1>Molotov TV</h1>
-        <p>Redirection officielle vers le service Molotov TV.</p>
-      </div>
-    </div>
-    <div class="row">
-      <div class="row-title">Chaînes principales</div>
-      <div class="grid" id="molGrid">
-        ${MOLOTOV_CHANNELS.map(c=>`
-          <div class="tile" tabindex="0" data-channel="${encodeURIComponent(c.name)}" style="background:${c.color};display:flex;align-items:center;justify-content:center;">
-            <div class="scrim"></div>
-            <div class="tile-body" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0;">
-              <div class="tile-title" style="font-size:16px;">${escapeHTML(c.name)}</div>
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>`;
-  viewEl.querySelectorAll('#molGrid .tile[data-channel]').forEach(t=>{
-    t.addEventListener('click',()=>{
-      const name = decodeURIComponent(t.dataset.channel);
-      window.open(`https://www.molotov.tv/fr_fr/search?q=${encodeURIComponent(name)}`, '_blank');
-      pushHistory({title:name, source:'Molotov', type:'external'});
-    });
-  });
-}
-
-/* ===================== IPTV, VOD & SERIES ===================== */
+/* ===================== IPTV, VOD & SERIES (FRANÇAIS & CATEGORIES) ===================== */
 let iptvSub = 'live';
+let selectedVodCat = 'ALL';
+let selectedSeriesCat = 'ALL';
+
 function renderIptv(sub){
   iptvSub = sub || iptvSub;
   viewEl.innerHTML = `
     <div class="subtabs">
-      <div class="subtab ${iptvSub==='live'?'active':''}" data-sub="live">📺 Chaînes TV</div>
+      <div class="subtab ${iptvSub==='live'?'active':''}" data-sub="live">📺 Chaînes TV (FR)</div>
       <div class="subtab ${iptvSub==='vod'?'active':''}" data-sub="vod">🎬 Films (VOD)</div>
       <div class="subtab ${iptvSub==='series'?'active':''}" data-sub="series">🍿 Séries</div>
-      <div class="subtab ${iptvSub==='config'?'active':''}" data-sub="config">⚙️ Config Xtream & Stalker</div>
     </div>
     <div id="iptvBody"></div>
   `;
@@ -777,93 +664,216 @@ function renderIptv(sub){
   if(iptvSub==='live') body.innerHTML = livePanel(); 
   if(iptvSub==='vod') body.innerHTML = vodPanel();
   if(iptvSub==='series') body.innerHTML = seriesPanel();
-  if(iptvSub==='config') body.innerHTML = configIptvPanel();
   bindIptvEvents();
   attachFocusNav();
 }
 
 function livePanel(){
-  const chans = state.m3u.channels || [];
-  const xtChans = state.xtream.streams || [];
-  const stChans = state.stalker.channels || [];
-  const hasContent = chans.length || xtChans.length || stChans.length;
+  // Filtre exclusif sur le contenu en Français
+  const chans = (state.m3u.channels || []).filter(c => isFrenchContent(c.name, c.group));
+  const xtChans = (state.xtream.streams || []).filter(s => isFrenchContent(s.name, s.category));
+  const stChans = (state.stalker.channels || []).filter(s => isFrenchContent(s.name));
 
   return `
-    <div class="panel">
-      <h3>Charger une playlist M3U rapide</h3>
-      <div class="row-inline">
-        <div class="field" style="margin:0;"><input id="m3uUrl" value="${escapeHTML(state.m3u.url||'')}" placeholder="https://..."></div>
-        <button class="btn" id="m3uLoadUrl">Charger</button>
-      </div>
-    </div>
     <div class="row">
-      <div class="row-title">Toutes vos chaînes en direct</div>
-      <div class="grid" id="liveGrid">
-        ${chans.map((c,i)=>{
-          const epgProg = getCurrentEpgForChannel(c.name, c.tvgId);
-          return tileHTML({title:c.name, sub:c.group||'IPTV', badge:'M3U', thumb:c.logo, epg: epgProg? epgProg.title: null, onclickAttr:`data-m3u-idx="${i}"`});
-        }).join('')}
-        ${xtChans.map((s,i)=>{
-          const epgProg = getCurrentEpgForChannel(s.name);
-          return tileHTML({title:s.name, sub:s.category||'Xtream', badge:'Xtream', thumb:s.icon, epg: epgProg? epgProg.title: null, onclickAttr:`data-xt-idx="${i}"`});
-        }).join('')}
-        ${stChans.map((c,i)=>{
-          const epgProg = getCurrentEpgForChannel(c.name);
-          return tileHTML({title:c.name, sub:'Stalker', badge:'Stalker', epg: epgProg? epgProg.title: null, onclickAttr:`data-st-idx="${i}"`});
-        }).join('')}
-        ${!hasContent ? '<div class="empty">Aucune chaîne trouvée. Chargez un fichier M3U ou configurez un compte Xtream / Stalker.</div>' : ''}
+      <div class="row-title">Chaînes Francophones En Direct</div>
+      <div class="grid">
+        ${chans.map((c,i)=>tileHTML({title:c.name, sub:'M3U', badge:'M3U', thumb:c.logo, onclickAttr:`data-m3u-idx="${i}"`})).join('')}
+        ${xtChans.map((s,i)=>tileHTML({title:s.name, sub:'Xtream', badge:'Live', thumb:s.icon, onclickAttr:`data-xt-idx="${i}"`})).join('')}
+        ${stChans.map((c,i)=>tileHTML({title:c.name, sub:'Stalker', badge:'Live', onclickAttr:`data-st-idx="${i}"`})).join('')}
+        ${(!chans.length && !xtChans.length && !stChans.length) ? '<div class="empty">Aucune chaîne francophone trouvée. Configurez vos accès dans les Réglages.</div>' : ''}
       </div>
     </div>`;
 }
 
 function vodPanel(){
-  const vods = state.xtream.vod || [];
+  // Filtre VOD Français
+  const allVod = (state.xtream.vod || []).filter(v => isFrenchContent(v.name));
+  const cats = state.xtream.vodCats || [];
+
+  const filteredVod = selectedVodCat === 'ALL' 
+    ? allVod 
+    : allVod.filter(v => String(v.category_id) === String(selectedVodCat));
+
   return `
+    <div class="cat-bar">
+      <div class="cat-chip ${selectedVodCat==='ALL'?'active':''}" data-vod-cat="ALL">Tous les films</div>
+      ${cats.map(c => `<div class="cat-chip ${selectedVodCat===String(c.category_id)?'active':''}" data-vod-cat="${c.category_id}">${escapeHTML(c.category_name)}</div>`).join('')}
+    </div>
     <div class="row">
-      <div class="row-title">Catalogue Films (VOD)</div>
-      <div class="grid" id="vodGrid">
-        ${vods.length ? vods.map((v,i)=>tileHTML({
-          title: v.name, sub: 'Film', badge: 'VOD', thumb: v.stream_icon, onclickAttr: `data-vod-idx="${i}"`
-        })).join('') : '<div class="empty">Aucun film disponible. Connectez un compte Xtream Codes incluant la VOD dans l\'onglet Config.</div>'}
+      <div class="row-title">Films VOD (${filteredVod.length})</div>
+      <div class="grid">
+        ${filteredVod.map((v,i)=>tileHTML({
+          title: v.name, sub: 'Film', badge: 'VOD', thumb: v.stream_icon, onclickAttr: `data-vod-id="${v.stream_id}" data-vod-ext="${v.container_extension||'mp4'}" data-vod-title="${escapeHTML(v.name)}"`
+        })).join('')}
+        ${!filteredVod.length ? '<div class="empty">Aucun film dans cette catégorie.</div>' : ''}
       </div>
     </div>`;
 }
 
 function seriesPanel(){
-  const series = state.xtream.series || [];
+  // Filtre Séries Français
+  const allSeries = (state.xtream.series || []).filter(s => isFrenchContent(s.name));
+  const cats = state.xtream.seriesCats || [];
+
+  const filteredSeries = selectedSeriesCat === 'ALL' 
+    ? allSeries 
+    : allSeries.filter(s => String(s.category_id) === String(selectedSeriesCat));
+
   return `
+    <div class="cat-bar">
+      <div class="cat-chip ${selectedSeriesCat==='ALL'?'active':''}" data-series-cat="ALL">Toutes les séries</div>
+      ${cats.map(c => `<div class="cat-chip ${selectedSeriesCat===String(c.category_id)?'active':''}" data-series-cat="${c.category_id}">${escapeHTML(c.category_name)}</div>`).join('')}
+    </div>
     <div class="row">
-      <div class="row-title">Catalogue Séries</div>
-      <div class="grid" id="seriesGrid">
-        ${series.length ? series.map((s,i)=>tileHTML({
-          title: s.name, sub: 'Série', badge: 'Série', thumb: s.cover, onclickAttr: `data-series-idx="${i}"`
-        })).join('') : '<div class="empty">Aucune série disponible. Connectez un compte Xtream Codes incluant les séries dans l\'onglet Config.</div>'}
+      <div class="row-title">Séries (${filteredSeries.length})</div>
+      <div class="grid">
+        ${filteredSeries.map((s,i)=>tileHTML({
+          title: s.name, sub: 'Série', badge: 'Série', thumb: s.cover, onclickAttr: `data-series-id="${s.series_id}"`
+        })).join('')}
+        ${!filteredSeries.length ? '<div class="empty">Aucune série dans cette catégorie.</div>' : ''}
       </div>
     </div>`;
 }
 
-function configIptvPanel(){
+function bindIptvEvents(){
+  // Filtres Catégories
+  viewEl.querySelectorAll('[data-vod-cat]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      selectedVodCat = chip.dataset.vodCat;
+      renderIptv('vod');
+    });
+  });
+
+  viewEl.querySelectorAll('[data-series-cat]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      selectedSeriesCat = chip.dataset.seriesCat;
+      renderIptv('series');
+    });
+  });
+
+  // Events VOD Direct Launch
+  viewEl.querySelectorAll('[data-vod-id]').forEach(t => {
+    t.addEventListener('click', () => {
+      const id = t.dataset.vodId;
+      const ext = t.dataset.vodExt;
+      const title = t.dataset.vodTitle;
+      const url = `${state.xtream.server}/movie/${state.xtream.username}/${state.xtream.password}/${id}.${ext}`;
+      playItem({ title, source: 'VOD', type: 'video', url });
+    });
+  });
+}
+
+/* ===================== REGLAGES (RANGÉS ET CLAIRS) ===================== */
+function renderSources(){
   const x = state.xtream;
   const st = state.stalker;
-  return `
-    <div class="panel">
-      <h3>Xtream Codes API (Live, VOD, Séries)</h3>
-      <div class="row-inline"><div class="field"><label>Serveur</label><input id="xServer" value="${escapeHTML(x.server||'')}"></div></div>
-      <div class="row-inline">
+
+  viewEl.innerHTML = `
+    <div class="settings-grid">
+      
+      <!-- XTREAM CODES -->
+      <div class="panel">
+        <h3> Configuration Xtream Codes</h3>
+        <div class="field"><label>Serveur (URL)</label><input id="xServer" value="${escapeHTML(x.server||'')}"></div>
         <div class="field"><label>Identifiant</label><input id="xUser" value="${escapeHTML(x.username||'')}"></div>
         <div class="field"><label>Mot de passe</label><input id="xPass" type="password" value="${escapeHTML(x.password||'')}"></div>
+        <button class="btn" id="xConnect">Synchroniser Xtream</button>
+        <div class="note" id="xStatus" style="display:none;"></div>
       </div>
-      <button class="btn" id="xConnect">Synchroniser Xtream</button>
-      <div class="note" id="xStatus" style="display:none;"></div>
+
+      <!-- PLAYLIST M3U -->
+      <div class="panel">
+        <h3> Playlist M3U</h3>
+        <div class="field"><label>URL de la playlist M3U</label><input id="m3uUrl" value="${escapeHTML(state.m3u.url||'')}"></div>
+        <button class="btn" id="m3uLoadUrl">Charger la playlist</button>
+      </div>
+
+      <!-- STALKER PORTAL -->
+      <div class="panel">
+        <h3> Portail Stalker</h3>
+        <div class="field"><label>URL Portail</label><input id="stPortal" value="${escapeHTML(st.portal||'')}"></div>
+        <div class="field"><label>Adresse MAC</label><input id="stMac" value="${escapeHTML(st.mac||'')}"></div>
+        <button class="btn" id="stConnect">Connexion Stalker</button>
+        <div class="note" id="stStatus" style="display:none;"></div>
+      </div>
+
+      <!-- EPG ET PROXY -->
+      <div class="panel">
+        <h3> Guide TV & Réseau</h3>
+        <div class="field"><label>URL EPG (XMLTV)</label><input id="epgUrlInput" value="${escapeHTML(state.epgUrl||'')}"></div>
+        <div class="field"><label>URL Proxy CORS</label><input id="proxyInput" value="${escapeHTML(state.proxy||'')}"></div>
+        <button class="btn" id="saveNet">Enregistrer Réseau & EPG</button>
+      </div>
+
     </div>
-    
-    <div class="panel">
-      <h3>Stalker Portal</h3>
-      <div class="field"><label>URL Portail</label><input id="stPortal" value="${escapeHTML(st.portal||'')}"></div>
-      <div class="field"><label>Adresse MAC</label><input id="stMac" value="${escapeHTML(st.mac||'')}"></div>
-      <button class="btn" id="stConnect">Connexion Stalker</button>
-      <div class="note" id="stStatus" style="display:none;"></div>
+
+    <div style="margin-top:20px; text-align:right;">
+      <button class="btn danger" id="resetAll">Réinitialiser l'application</button>
     </div>`;
+
+  // Handlers Réglages
+  document.getElementById('xConnect')?.addEventListener('click', syncXtream);
+  document.getElementById('m3uLoadUrl')?.addEventListener('click', syncM3u);
+  document.getElementById('saveNet')?.addEventListener('click', () => {
+    state.epgUrl = document.getElementById('epgUrlInput').value.trim();
+    state.proxy = document.getElementById('proxyInput').value.trim();
+    save();
+    loadGuideData();
+    alert('Réglages enregistrés !');
+  });
+  document.getElementById('resetAll')?.addEventListener('click', () => {
+    if(confirm('Réinitialiser toutes les données ?')){ localStorage.clear(); location.reload(); }
+  });
+}
+
+async function syncXtream(){
+  const server = document.getElementById('xServer').value.replace(/\/$/,'');
+  const username = document.getElementById('xUser').value;
+  const password = document.getElementById('xPass').value;
+  const statusEl = document.getElementById('xStatus');
+  statusEl.style.display='block'; statusEl.textContent = 'Connexion et chargement du contenu...';
+
+  try {
+    // Streams
+    const liveRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`);
+    const liveData = await liveRes.json();
+
+    // VOD & Catégories VOD
+    const vodRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_streams`);
+    const vodData = await vodRes.json();
+    const vodCatRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_categories`);
+    const vodCats = await vodCatRes.json();
+
+    // Séries & Catégories Séries
+    const seriesRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series`);
+    const seriesData = await seriesRes.json();
+    const seriesCatRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series_categories`);
+    const seriesCats = await seriesCatRes.json();
+
+    state.xtream = {
+      server, username, password,
+      streams: Array.isArray(liveData)?liveData:[],
+      vod: Array.isArray(vodData)?vodData:[],
+      vodCats: Array.isArray(vodCats)?vodCats:[],
+      series: Array.isArray(seriesData)?seriesData:[],
+      seriesCats: Array.isArray(seriesCats)?seriesCats:[]
+    };
+    save();
+    statusEl.textContent = 'Synchronisation Xtream réussie !';
+  } catch(e) {
+    statusEl.textContent = 'Erreur Xtream : ' + e.message;
+  }
+}
+
+async function syncM3u(){
+  const url = document.getElementById('m3uUrl').value;
+  try{
+    const res = await fetch(url);
+    const text = await res.text();
+    state.m3u = {url, raw:text, channels: parseM3U(text)};
+    save(); alert('M3U chargé !');
+  }catch(e){ alert('Erreur M3U : '+e.message); }
 }
 
 function parseM3U(text){
@@ -884,338 +894,64 @@ function parseM3U(text){
   return channels;
 }
 
-async function xtreamConnect(){
-  const server = document.getElementById('xServer').value.replace(/\/$/,'');
-  const username = document.getElementById('xUser').value;
-  const password = document.getElementById('xPass').value;
-  const statusEl = document.getElementById('xStatus');
-  statusEl.style.display='block'; statusEl.textContent = 'Connexion et récupération du catalogue (Live, VOD, Séries)...';
-  try{
-    // Live Streams
-    const liveRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`);
-    const liveData = await liveRes.json();
-    const streams = liveData.map(s=>({ name: s.name, category: s.category_id, icon: s.stream_icon, id: s.stream_id }));
-
-    // VOD
-    let vod = [];
-    try {
-      const vodRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_streams`);
-      const vodData = await vodRes.json();
-      if(Array.isArray(vodData)) vod = vodData;
-    } catch(e){}
-
-    // Séries
-    let series = [];
-    try {
-      const seriesRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series`);
-      const seriesData = await seriesRes.json();
-      if(Array.isArray(seriesData)) series = seriesData;
-    } catch(e){}
-
-    state.xtream = {server, username, password, streams, vod, series};
-    save();
-    statusEl.textContent = `Succès ! ${streams.length} Chaînes, ${vod.length} Films et ${series.length} Séries synchronisés.`;
-  }catch(e){ statusEl.textContent = "Erreur : " + e.message; }
-}
-
-async function stalkerConnect(){
-  const portal = document.getElementById('stPortal').value.replace(/\/portal\.php.*$/,'');
-  const mac = document.getElementById('stMac').value;
-  const statusEl = document.getElementById('stStatus');
-  statusEl.style.display='block'; statusEl.textContent='Handshake...';
-  try{
-    const cookieMac = `mac=${encodeURIComponent(mac)}`;
-    const hsRes = await proxied(`${portal}/portal.php?type=stb&action=handshake&JsHttpRequest=1-xml`, { 'Cookie': cookieMac });
-    const hsData = await hsRes.json();
-    const token = hsData?.js?.token;
-    if(!token) throw new Error("Token non reçu.");
-
-    const chRes = await proxied(`${portal}/portal.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml`, { 'Authorization': 'Bearer '+token, 'Cookie': cookieMac });
-    const chData = await chRes.json();
-    const list = (chData?.js?.data || []).map(c=>({ name: c.name, id: c.id, cmd: c.cmd }));
-
-    state.stalker = { portal, mac, channels: list, token };
-    save();
-    statusEl.textContent = list.length + ' chaînes chargées.';
-    renderIptv('live');
-  }catch(e){ statusEl.textContent = "Erreur : " + e.message; }
-}
-
-async function resolveStalkerStreamUrl(channel){
-  const st = state.stalker;
-  const cookieMac = `mac=${encodeURIComponent(st.mac)}`;
-  const url = `${st.portal}/portal.php?type=itv&action=create_link&cmd=${encodeURIComponent(channel.cmd)}&JsHttpRequest=1-xml`;
-  const res = await proxied(url, { 'Authorization': 'Bearer '+st.token, 'Cookie': cookieMac });
-  const data = await res.json();
-  let streamUrl = (data?.js?.cmd || '').replace(/^ffmpeg\s+/i, '').trim();
-  if(!streamUrl) throw new Error('Flux non disponible.');
-  return streamUrl;
-}
-
-function proxied(url, extraHeaders){
+function proxied(url){
   const proxy = (state.proxy || '').trim();
-  if(!proxy) return fetch(url, extraHeaders? {headers:extraHeaders} : undefined);
+  if(!proxy) return fetch(url);
   if(proxy.endsWith('=') || proxy.endsWith('/')) return fetch(proxy + encodeURIComponent(url));
   const p = new URL(proxy);
   p.searchParams.set('url', url);
-  if(extraHeaders) p.searchParams.set('headers', JSON.stringify(extraHeaders));
   return fetch(p.toString());
 }
 
-function bindIptvEvents(){
-  const m3uBtn = document.getElementById('m3uLoadUrl');
-  if(m3uBtn) m3uBtn.addEventListener('click', async ()=>{
-    const url = document.getElementById('m3uUrl').value;
-    try{
-      const res = await fetch(url);
-      const text = await res.text();
-      state.m3u = {url, raw:text, channels: parseM3U(text)};
-      save(); renderIptv('live');
-    }catch(e){ alert('Erreur M3U : '+e.message); }
-  });
-
-  // Events Chaînes
-  viewEl.querySelectorAll('#liveGrid .tile[data-m3u-idx]').forEach(t=>{
-    t.addEventListener('click',()=>{
-      const c = state.m3u.channels[t.dataset.m3uIdx];
-      openVideoPlayer(c.name, c.url, 'M3U');
-      pushHistory({title:c.name, source:'M3U', type:'hls', url:c.url});
-    });
-  });
-
-  viewEl.querySelectorAll('#liveGrid .tile[data-xt-idx]').forEach(t=>{
-    t.addEventListener('click',()=>{
-      const s = state.xtream.streams[t.dataset.xtIdx];
-      const url = `${state.xtream.server}/live/${state.xtream.username}/${state.xtream.password}/${s.id}.m3u8`;
-      openVideoPlayer(s.name, url, 'Xtream');
-      pushHistory({title:s.name, source:'Xtream', type:'hls', url});
-    });
-  });
-
-  viewEl.querySelectorAll('#liveGrid .tile[data-st-idx]').forEach(t=>{
-    t.addEventListener('click', async ()=>{
-      const c = state.stalker.channels[t.dataset.stIdx];
-      try{
-        const url = await resolveStalkerStreamUrl(c);
-        openVideoPlayer(c.name, url, 'Stalker', true, {'Cookie': `mac=${encodeURIComponent(state.stalker.mac)}`});
-        pushHistory({title:c.name, source:'Stalker', type:'hls', url});
-      }catch(e){ alert("Erreur Stalker : "+e.message); }
-    });
-  });
-
-  // Events VOD
-  viewEl.querySelectorAll('#vodGrid .tile[data-vod-idx]').forEach(t=>{
-    t.addEventListener('click',()=>{
-      const v = state.xtream.vod[t.dataset.vodIdx];
-      const ext = v.container_extension || 'mp4';
-      const url = `${state.xtream.server}/movie/${state.xtream.username}/${state.xtream.password}/${v.stream_id}.${ext}`;
-      openVideoPlayer(v.name, url, 'Xtream VOD');
-      pushHistory({title:v.name, source:'VOD', type:'video', url});
-    });
-  });
-
-  // Events Séries
-  viewEl.querySelectorAll('#seriesGrid .tile[data-series-idx]').forEach(t=>{
-    t.addEventListener('click',()=>{
-      const s = state.xtream.series[t.dataset.seriesIdx];
-      alert(`Série : ${s.name}\nIntégration du sélecteur d'épisodes en cours.`);
-    });
-  });
-
-  // Config Xtream / Stalker
-  const xBtn = document.getElementById('xConnect');
-  if(xBtn) xBtn.addEventListener('click', xtreamConnect);
-
-  const stBtn = document.getElementById('stConnect');
-  if(stBtn) stBtn.addEventListener('click', stalkerConnect);
-}
-
-/* ===================== SOURCES / SETTINGS ===================== */
-function renderSources(){
-  viewEl.innerHTML = `
-    <div class="panel">
-      <h3>📅 Guide TV (EPG)</h3>
-      <div class="field"><label>URL XMLTV (.xml / .xml.gz)</label><input id="epgUrlInput" value="${escapeHTML(state.epgUrl||'')}"></div>
-      <button class="btn" id="saveEpgUrl">Enregistrer l'EPG</button>
-    </div>
-    <div class="panel">
-      <h3>Proxy CORS</h3>
-      <div class="field"><label>URL Proxy</label><input id="proxyInput" value="${escapeHTML(state.proxy||'')}"></div>
-      <button class="btn" id="saveProxy">Enregistrer Proxy</button>
-    </div>
-    <button class="btn danger" id="resetAll">Réinitialiser tout</button>`;
-  document.getElementById('saveEpgUrl').addEventListener('click',()=>{
-    state.epgUrl = document.getElementById('epgUrlInput').value.trim();
-    save(); loadGuideData(); alert('Source EPG enregistrée.');
-  });
-  document.getElementById('saveProxy').addEventListener('click',()=>{
-    state.proxy = document.getElementById('proxyInput').value.trim();
-    save(); alert('Proxy enregistré.');
-  });
-  document.getElementById('resetAll').addEventListener('click',()=>{
-    if(confirm('Effacer la configuration ?')){ localStorage.clear(); location.reload(); }
-  });
-}
+/* ===================== OTHER VIEWS ===================== */
+function renderYoutube(){ viewEl.innerHTML = `<div class="hero"><h1>YouTube</h1></div>`; }
+function renderMolotov(){ viewEl.innerHTML = `<div class="hero"><h1>Molotov TV</h1></div>`; }
 
 /* ===================== PLAYER ===================== */
 let hlsInstance = null;
-let mpegtsInstance = null;
-let playerData = null;
-let previousView = 'home';
-
-function openVideoPlayer(title, url, sub, forceProxy, streamHeaders){
-  if(!url){ alert('URL introuvable.'); return; }
-  playerData = {title, sub: sub||'', kind:'video', src:url, forceProxy: !!forceProxy, headers: streamHeaders||null};
-  goToPlayerView();
-}
-function openFramePlayer(title, url, sub){
-  playerData = {title, sub: sub||'', kind:'iframe', src:url};
-  goToPlayerView();
-}
-function goToPlayerView(){
-  if(state.view !== 'player') previousView = state.view;
+function openVideoPlayer(title, url, sub){
+  if(!url) return;
   state.view = 'player';
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('viewTitle').textContent = 'Lecture';
-  renderPlayerView();
-  attachFocusNav();
+  renderPlayer(title, url, sub);
 }
 
-function backFromPlayer(){
-  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
-  if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
-  clearInterval(window.__streamhubStallWatch);
-
-  const video = document.querySelector('#playerStage video');
-  if(video){
-    video.pause();
-    video.src = '';
-    video.load();
-  }
-
-  playerData = null;
-  switchView(previousView);
-}
-
-function renderPlayerView(){
-  const p = playerData;
+function renderPlayer(title, url, sub){
   viewEl.innerHTML = `
     <div class="player-page">
       <div class="player-info">
-        <div style="display:flex;align-items:center;">
-          <button class="player-back" id="playerBackBtn">← Retour</button>
-          <div>
-            <h2>${escapeHTML(p.title)}</h2>
-            ${p.sub? `<div class="sub">${escapeHTML(p.sub)}</div>`:''}
-          </div>
-        </div>
+        <button class="player-back" id="playerBack">← Retour</button>
+        <h2>${escapeHTML(title)}</h2>
       </div>
-      <div class="player-stage" id="playerStage"></div>
-      <div class="player-status-line" id="playerStatusLine">${p.kind==='video' ? 'Chargement...' : ''}</div>
+      <div class="player-stage">
+        <video id="mainVideo" controls autoplay></video>
+      </div>
     </div>`;
-  document.getElementById('playerBackBtn').addEventListener('click', backFromPlayer);
-
-  const stage = document.getElementById('playerStage');
-  if(p.kind === 'iframe'){
-    const frame = document.createElement('iframe');
-    frame.src = p.src; frame.allow = 'autoplay; encrypted-media'; frame.allowFullscreen = true;
-    stage.appendChild(frame);
-    return;
-  }
-
-  const video = document.createElement('video');
-  video.controls = true; video.autoplay = true;
-  stage.appendChild(video);
-  loadVideoSource(video, p.src, p.forceProxy, p.headers);
-}
-
-function loadVideoSource(video, url, viaProxy, streamHeaders){
-  const statusEl = document.getElementById('playerStatusLine');
-  const isRawMpegTs = /extension=ts\b/i.test(url) || /\.ts(\?|$)/i.test(url);
-  const actualUrl = viaProxy ? buildProxiedUrl(url, streamHeaders) : url;
-
-  if(hlsInstance){ hlsInstance.destroy(); hlsInstance=null; }
-  if(mpegtsInstance){ mpegtsInstance.destroy(); mpegtsInstance=null; }
-
-  if(isRawMpegTs && window.mpegts && mpegts.getFeatureList().mseLivePlayback){
-    mpegtsInstance = mpegts.createPlayer({ type:'mpegts', isLive:true, url: actualUrl });
-    mpegtsInstance.attachMediaElement(video);
-    mpegtsInstance.load();
-    mpegtsInstance.play();
-  } else if(window.Hls && Hls.isSupported()){
+  
+  document.getElementById('playerBack').onclick = () => switchView('home');
+  const video = document.getElementById('mainVideo');
+  if(Hls.isSupported()){
     hlsInstance = new Hls();
-    hlsInstance.loadSource(actualUrl);
+    hlsInstance.loadSource(url);
     hlsInstance.attachMedia(video);
-  } else {
-    video.src = actualUrl;
-    video.play().catch(()=>{});
-  }
-  if(statusEl) statusEl.textContent = '';
-}
-
-function buildProxiedUrl(url, headers){
-  const proxy = (state.proxy||'').trim();
-  if(!proxy) return url;
-  if(proxy.endsWith('=') || proxy.endsWith('/')) return proxy + encodeURIComponent(url);
-  const p = new URL(proxy);
-  p.searchParams.set('url', url);
-  if(headers) p.searchParams.set('headers', JSON.stringify(headers));
-  return p.toString();
+  } else { video.src = url; }
 }
 
 function playItem(item){
-  if(item.type==='youtube') openFramePlayer(item.title, `https://www.youtube.com/embed/${item.id}?autoplay=1`, item.source);
-  else openVideoPlayer(item.title, item.url, item.source);
+  if(!item) return;
+  openVideoPlayer(item.title, item.url, item.source);
+  pushHistory(item);
 }
 
-/* ===================== D-PAD NAVIGATION ===================== */
+/* ===================== NAVIGATION D-PAD ===================== */
 function attachFocusNav(){
-  const focusables = Array.from(document.querySelectorAll('.tile, .nav-item, .subtab, input, .btn, select'));
-  focusables.forEach(el=>{
+  document.querySelectorAll('.tile, .btn, .subtab, .cat-chip, input').forEach(el=>{
     el.addEventListener('mouseenter', ()=> setFocus(el));
-    el.addEventListener('keydown', e=>{ if(e.key==='Enter') el.click(); });
   });
-  if(!document.activeElement || document.activeElement===document.body){
-    const first = document.querySelector('.view .tile, .view .btn');
-    if(first) setFocus(first);
-  }
 }
 function setFocus(el){
   document.querySelectorAll('.focused').forEach(f=>f.classList.remove('focused'));
-  el.classList.add('focused'); el.focus({preventScroll:false});
-  el.scrollIntoView({block:'nearest', inline:'nearest', behavior:'smooth'});
+  el.classList.add('focused');
 }
-function spatialNav(dir){
-  const current = document.querySelector('.focused') || document.activeElement;
-  const candidates = Array.from(document.querySelectorAll('.tile, .nav-item, .subtab, input, .btn')).filter(el => el.offsetParent !== null);
-  if(!current || !candidates.length) return;
-  const cRect = current.getBoundingClientRect();
-  const cx = cRect.left + cRect.width/2, cy = cRect.top + cRect.height/2;
-  let best = null, bestScore = Infinity;
-  for(const el of candidates){
-    if(el === current) continue;
-    const r = el.getBoundingClientRect();
-    const ex = r.left + r.width/2, ey = r.top + r.height/2;
-    const dx = ex - cx, dy = ey - cy;
-    let primary, ortho;
-    if(dir==='right'){ if(dx<=4) continue; primary=dx; ortho=Math.abs(dy); }
-    else if(dir==='left'){ if(dx>=-4) continue; primary=-dx; ortho=Math.abs(dy); }
-    else if(dir==='down'){ if(dy<=4) continue; primary=dy; ortho=Math.abs(dx); }
-    else if(dir==='up'){ if(dy>=-4) continue; primary=-dy; ortho=Math.abs(dx); }
-    const score = primary + ortho*2.2;
-    if(score < bestScore){ bestScore = score; best = el; }
-  }
-  if(best) setFocus(best);
-}
-document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){ if(state.view==='player') backFromPlayer(); return; }
-  const tag = document.activeElement?.tagName;
-  if(tag==='INPUT' || tag==='TEXTAREA') return;
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
-    e.preventDefault();
-    spatialNav({ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key]);
-  }
-});
 
 /* ===================== INIT ===================== */
 render();
