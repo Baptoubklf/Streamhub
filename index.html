@@ -7,8 +7,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
   --bg:#0A1628;
@@ -31,7 +29,6 @@ body{
 h1,h2,h3,.brand,.tile-title,.nav-label{
   font-family:'Space Grotesk','Inter',sans-serif;
 }
-/* ===== Layout ===== */
 .app{display:flex;height:100vh;width:100vw;}
 .sidebar{
   width:220px;
@@ -74,23 +71,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
   color:#4A6488;padding:16px 0 6px 28px;
 }
-.nav-group-label:first-of-type{padding-top:0px;}
 .sidebar-spacer{flex:1;}
-.sidebar-mini-preview{
-  margin:0 16px 18px;padding:10px;border-radius:10px;background:var(--surface2);
-  display:flex;align-items:center;gap:10px;cursor:pointer;border:1px solid rgba(255,255,255,.06);
-}
-.sidebar-mini-preview:hover{background:#1c355c;}
-.mini-preview-thumb{
-  width:46px;height:46px;border-radius:6px;background-size:cover;background-position:center;
-  background-color:#0A1628;flex-shrink:0;
-}
-.mini-preview-info{overflow:hidden;}
-.mini-preview-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
-.mini-preview-title{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.nav-item:focus-visible, .tile:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible{
-  outline:2px solid var(--teal);outline-offset:2px;
-}
 
 .main{flex:1;display:flex;flex-direction:column;min-width:0;}
 .topbar{
@@ -105,11 +86,9 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 .view::-webkit-scrollbar{width:8px;}
 .view::-webkit-scrollbar-thumb{background:#252c37;border-radius:4px;}
 
-/* ===== Rows / tiles ===== */
 .row{margin-bottom:34px;}
 .row-title{font-size:16px;font-weight:600;margin-bottom:14px;color:#C9D2DC;display:flex;justify-content:space-between;align-items:center;}
 .tiles{display:flex;gap:16px;overflow-x:auto;padding:8px 2px 14px;}
-.tiles::-webkit-scrollbar{height:6px;}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;}
 
 .tile{
@@ -125,837 +104,337 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   border:2px solid transparent;
 }
 .grid .tile{flex:none;width:100%;}
-.tile:hover, .tile.focused{
-  transform:scale(1.06);
-  z-index:2;
+.tile:hover{
+  transform:scale(1.05);
   border-color:var(--amber);
-  box-shadow:0 0 0 3px rgba(0,174,239,.35), 0 10px 24px rgba(0,0,0,.5);
+  box-shadow:0 10px 24px rgba(0,0,0,.5);
 }
-.tile.focused::after{
-  content:'';position:absolute;inset:-6px;border-radius:14px;
-  background:conic-gradient(from 0deg, var(--amber), transparent 30%, transparent 70%, var(--amber));
-  z-index:-1;
-  animation:dial 2.4s linear infinite;
-  opacity:.55;
-}
-@keyframes dial{to{transform:rotate(360deg);}}
 .tile .thumb{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.85;}
 .tile .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,.85));}
 .tile-body{position:relative;padding:10px 12px;z-index:1;}
 .tile-title{font-size:13px;font-weight:600;line-height:1.25;}
 .tile-sub{font-size:11px;color:var(--muted);margin-top:2px;}
-.tile-epg{font-size:10px;color:var(--amber);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tile-badge{
   position:absolute;top:8px;right:8px;z-index:2;
   font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;
-  background:rgba(0,0,0,.55);color:var(--teal);letter-spacing:.5px;
+  background:rgba(0,0,0,.65);color:var(--teal);
 }
 
-/* ===== Hero ===== */
 .hero{
-  height:260px;border-radius:14px;position:relative;overflow:hidden;margin-bottom:32px;
-  background:radial-gradient(circle at 20% 20%, #1c2431, #0A0E14 70%);
+  height:220px;border-radius:14px;position:relative;overflow:hidden;margin-bottom:28px;
+  background:linear-gradient(180deg, rgba(10,10,10,0) 40%, rgba(10,10,10,1) 100%), radial-gradient(circle at 15% 25%, rgba(0,174,239,.35), transparent 55%);
   display:flex;align-items:flex-end;padding:28px;
-  border:1px solid rgba(255,255,255,.05);
 }
-.hero-netflix{
-  height:300px;
-  background:
-    linear-gradient(180deg, rgba(10,10,10,0) 40%, rgba(10,10,10,1) 100%),
-    radial-gradient(circle at 15% 25%, rgba(0,174,239,.35), transparent 55%),
-    linear-gradient(135deg, #1a1a1a, #0A0A0A 70%);
-  border:none;
-}
-.hero-actions{display:flex;gap:12px;margin-top:18px;}
+.hero-actions{display:flex;gap:12px;margin-top:14px;}
 .hero-btn{
-  border:none;border-radius:6px;padding:12px 26px;font-size:14px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;gap:8px;
+  border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;
 }
 .hero-btn-primary{background:#fff;color:#000;}
-.hero-btn-primary:hover{background:rgba(255,255,255,.85);}
 .hero-btn-secondary{background:rgba(109,109,110,.5);color:#fff;}
-.hero-btn-secondary:hover{background:rgba(109,109,110,.35);}
-.hero h1{font-size:30px;margin-bottom:8px;}
-.hero p{color:var(--muted);max-width:520px;font-size:14px;line-height:1.5;}
-.hero .tag{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:1.5px;margin-bottom:10px;text-transform:uppercase;}
 
-/* ===== Forms & Categories ===== */
-.panel{background:var(--surface);border-radius:12px;padding:24px;margin-bottom:24px;border:1px solid rgba(255,255,255,.05);}
-.panel h3{font-size:15px;margin-bottom:16px;color:var(--amber);}
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
-.field input, .field select, .field textarea{
+.panel{background:var(--surface);border-radius:12px;padding:20px;margin-bottom:20px;border:1px solid rgba(255,255,255,.05);}
+.panel h3{font-size:15px;margin-bottom:14px;color:var(--amber);}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+.field input{
   width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2a3340;
-  background:#0D1218;color:var(--text);font-size:14px;font-family:inherit;
+  background:#0D1218;color:var(--text);font-size:14px;
 }
-.field textarea{min-height:90px;resize:vertical;}
-.row-inline{display:flex;gap:12px;}
-.row-inline .field{flex:1;}
 .btn{
   background:var(--amber);color:#FFFFFF;border:none;padding:10px 18px;border-radius:8px;
-  font-weight:700;cursor:pointer;font-size:13px;letter-spacing:.3px;
+  font-weight:700;cursor:pointer;font-size:13px;
 }
-.btn.secondary{background:transparent;border:1px solid #2a3340;color:var(--text);}
 .btn.danger{background:transparent;border:1px solid var(--danger);color:var(--danger);}
-.btn:hover{filter:brightness(1.1);}
 
-.subtabs{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;}
+.subtabs{display:flex;gap:8px;margin-bottom:20px;}
 .subtab{
   padding:8px 16px;border-radius:20px;background:var(--surface2);color:var(--muted);
   font-size:13px;cursor:pointer;font-weight:600;
 }
 .subtab.active{background:var(--amber);color:#FFFFFF;}
 
-.cat-bar{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:20px;}
+.cat-bar{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:16px;}
 .cat-chip{
   padding:6px 14px;border-radius:16px;background:rgba(255,255,255,0.05);color:var(--muted);
-  font-size:12px;cursor:pointer;white-space:nowrap;border:1px solid transparent;
+  font-size:12px;cursor:pointer;white-space:nowrap;
 }
-.cat-chip.active{background:rgba(0,174,239,0.2);color:var(--amber);border-color:var(--amber);}
+.cat-chip.active{background:rgba(0,174,239,0.2);color:var(--amber);border:1px solid var(--amber);}
 
-.note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-left:3px solid var(--teal);border-radius:4px;}
 .empty{color:var(--muted);font-size:13px;padding:20px 0;}
-
-.search-bar{
-  display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:20px;padding:8px 16px;width:260px;
-}
-.search-bar input{background:transparent;border:none;color:var(--text);font-size:13px;width:100%;outline:none;}
-
-/* ===== Settings Layout ===== */
-.settings-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px;}
-
-/* ===== Player Page ===== */
 .player-page{display:flex;flex-direction:column;height:100%;}
-.player-stage{
-  flex:1;background:#000;border-radius:14px;overflow:hidden;position:relative;
-  display:flex;align-items:center;justify-content:center;min-height:0;
-}
-.player-stage video, .player-stage iframe{width:100%;height:100%;border:none;background:#000;}
-.player-info{padding:18px 4px 6px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.player-info h2{font-size:18px;font-weight:600;}
-.player-info .sub{color:var(--muted);font-size:13px;margin-top:2px;}
-.player-back{
-  background:var(--surface2);border:none;color:var(--text);padding:10px 18px;border-radius:8px;
-  cursor:pointer;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;flex-shrink:0;margin-right:16px;
-}
-.player-back:hover{background:#232b37;}
-.player-status-line{color:var(--muted);font-size:12px;margin-top:8px;}
+.player-stage{flex:1;background:#000;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.player-stage video{width:100%;height:100%;}
+.player-back{background:var(--surface2);border:none;color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;margin-right:12px;}
 </style>
 </head>
 <body>
 
 <div class="app">
-  <nav class="sidebar" id="sidebar">
+  <nav class="sidebar">
     <div class="brand">📺 StreamHub</div>
-
-    <!-- GROUPE 1: EN DIRECT & GUIDE -->
     <div class="nav-group-label">Direct & Guide</div>
-    <div class="nav-item active" data-view="home" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
-      <span class="nav-label">À la une</span>
-    </div>
-    <div class="nav-item" data-view="guide" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/><path d="M7 13h3M7 16h6"/></svg>
-      <span class="nav-label">Guide TV (EPG)</span>
-    </div>
+    <div class="nav-item active" data-view="home"><span class="nav-label">À la une</span></div>
+    <div class="nav-item" data-view="guide"><span class="nav-label">Guide TV (EPG)</span></div>
 
-    <!-- GROUPE 2: CATALOGUE & MÉDIAS -->
     <div class="nav-group-label">Catalogue</div>
-    <div class="nav-item" data-view="iptv" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
-      <span class="nav-label">IPTV, VOD & Séries</span>
-    </div>
-    <div class="nav-item" data-view="youtube" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
-      <span class="nav-label">YouTube</span>
-    </div>
-    <div class="nav-item" data-view="molotov" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l16-3v13"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="17" r="2"/></svg>
-      <span class="nav-label">Molotov TV</span>
-    </div>
+    <div class="nav-item" data-view="iptv"><span class="nav-label">IPTV, VOD & Séries</span></div>
+    <div class="nav-item" data-view="youtube"><span class="nav-label">YouTube</span></div>
 
     <div class="sidebar-spacer"></div>
 
-    <div class="sidebar-mini-preview" id="sidebarMiniPreview" style="display:none;">
-      <div class="mini-preview-thumb" id="miniPreviewThumb"></div>
-      <div class="mini-preview-info">
-        <div class="mini-preview-label">Reprendre</div>
-        <div class="mini-preview-title" id="miniPreviewTitle"></div>
-      </div>
-    </div>
-
-    <!-- GROUPE 3: CONFIGURATION -->
     <div class="nav-group-label">Configuration</div>
-    <div class="nav-item" data-view="sources" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
-      <span class="nav-label">Réglages</span>
-    </div>
+    <div class="nav-item" data-view="sources"><span class="nav-label">Réglages</span></div>
   </nav>
 
   <div class="main">
     <div class="topbar">
       <h2 id="viewTitle">À la une</h2>
-      <div style="display:flex;align-items:center;gap:18px;">
-        <div class="search-bar"><span>🔍</span><input id="globalSearch" placeholder="Rechercher..."></div>
-        <div class="clock" id="clock">--:--</div>
-      </div>
+      <div class="clock" id="clock">--:--</div>
     </div>
     <div class="view" id="view"></div>
   </div>
 </div>
 
 <script>
-/* ===================== HELPER FR FILTER ===================== */
+/* FILTRE FRANÇAIS ASSOUPLI POUR NE PAS BLOQUER VOD/SERIES SANS BALISES */
 function isFrenchContent(name, category) {
   const text = `${name || ''} ${category || ''}`.toUpperCase();
-  // Exclusion si explicitement un autre pays
+  // Exclut uniquement les langues explicitement étrangères
   if (/(?:\||\b)(?:EN|UK|US|ES|IT|DE|AR|PT|NL|TR|RO|PL|AL|RU)(?:\||\b)/.test(text) && !/(?:\||\b)(?:FR|FRENCH|FRANCE)(?:\||\b)/.test(text)) {
     return false;
   }
-  // Inclusion des mots-clés FR courants
-  return /(?:\||\b)(?:FR|FRENCH|FRANCE|VF|VOSTFR)(?:\||\b)/i.test(text) || !/(?:\||\b)[A-Z]{2,3}(?:\||\b)/.test(text);
+  return true;
 }
 
-/* ===================== ESCAPE HTML ===================== */
-function escapeHTML(str){
-  return String(str || '').replace(/[&<>"']/g, match => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[match]));
-}
+function escapeHTML(str){ return String(str || '').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-/* ===================== STORAGE ===================== */
 const DB = {
   get(k, d){ try{ return JSON.parse(localStorage.getItem('sh_'+k)) ?? d; }catch(e){ return d; } },
   set(k, v){ localStorage.setItem('sh_'+k, JSON.stringify(v)); }
 };
+
 let state = {
-  youtube: DB.get('youtube', []),
   m3u: DB.get('m3u', {url:'', raw:'', channels:[]}),
-  xtream: DB.get('xtream', {server:'',username:'',password:'',categories:[],streams:[], vod:[], vodCats:[], series:[], seriesCats:[]}),
+  xtream: DB.get('xtream', {server:'',username:'',password:'',streams:[], vod:[], vodCats:[], series:[], seriesCats:[]}),
   stalker: DB.get('stalker', {portal:'',mac:'',channels:[]}),
   history: DB.get('history', []),
   proxy: DB.get('proxy', 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run'),
-  googleClientId: DB.get('googleClientId', ''),
-  youtubeApiKey: DB.get('youtubeApiKey', ''),
   epgUrl: DB.get('epgUrl', 'https://xmltvfr.fr/xmltv/xmltv_fr.xml.gz'),
-  view: 'home',
+  view: 'home'
 };
 
 function save(){
-  DB.set('youtube', state.youtube);
   DB.set('m3u', state.m3u);
   DB.set('xtream', state.xtream);
   DB.set('stalker', state.stalker);
   DB.set('history', state.history);
   DB.set('proxy', state.proxy);
-  DB.set('googleClientId', state.googleClientId);
-  DB.set('youtubeApiKey', state.youtubeApiKey);
   DB.set('epgUrl', state.epgUrl);
 }
 
 function pushHistory(item){
-  state.history.unshift({...item, ts:Date.now()});
-  state.history = state.history.slice(0,20);
+  state.history = [item, ...state.history.filter(h=>h.title!==item.title)].slice(0,15);
   save();
-  if(typeof updateMiniPreview === 'function') updateMiniPreview();
 }
-
-/* ===================== NAV ===================== */
-const titles = {
-  home: 'À la une',
-  guide: 'Guide TV (EPG)',
-  iptv: 'IPTV, VOD & Séries',
-  youtube: 'YouTube',
-  molotov: 'Molotov TV',
-  sources: 'Réglages',
-  player: 'Lecture'
-};
 
 document.querySelectorAll('.nav-item').forEach(el=>{
   el.addEventListener('click', ()=> switchView(el.dataset.view));
-  el.addEventListener('keydown', e=>{ if(e.key==='Enter') switchView(el.dataset.view); });
 });
 
 function switchView(v){
   state.view = v;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view===v));
-  document.getElementById('viewTitle').textContent = titles[v] || 'StreamHub';
+  document.getElementById('viewTitle').textContent = v.toUpperCase();
   render();
 }
 
-/* ===================== CLOCK ===================== */
 function tickClock(){
-  const d = new Date();
-  document.getElementById('clock').textContent = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
 setInterval(tickClock,1000); tickClock();
 
-/* ===================== RENDER ROUTER ===================== */
 const viewEl = document.getElementById('view');
-function updateMiniPreview(){
-  const box = document.getElementById('sidebarMiniPreview');
-  if(!box) return;
-  const last = state.history[0];
-  if(!last){ box.style.display = 'none'; return; }
-  box.style.display = 'flex';
-  document.getElementById('miniPreviewTitle').textContent = last.title;
-  const thumb = document.getElementById('miniPreviewThumb');
-  thumb.style.backgroundImage = last.id ? `url('https://img.youtube.com/vi/${last.id}/default.jpg')` : '';
-  box.onclick = () => playItem(last);
-}
 
 function render(){
   if(state.view==='home') renderHome();
   else if(state.view==='youtube') renderYoutube();
-  else if(state.view==='molotov') renderMolotov();
   else if(state.view==='iptv') renderIptv('live');
   else if(state.view==='guide') renderGuide();
   else if(state.view==='sources') renderSources();
-  attachFocusNav();
-  updateMiniPreview();
 }
 
-function tileHTML({title, sub, badge, thumb, epg, onclickAttr}){
-  return `<div class="tile" tabindex="0" ${onclickAttr}>
+function tileHTML({title, sub, badge, thumb, onclickAttr}){
+  return `<div class="tile" ${onclickAttr}>
     ${thumb?`<div class="thumb" style="background-image:url('${escapeHTML(thumb)}')"></div>`:''}
     <div class="scrim"></div>
     ${badge?`<div class="tile-badge">${escapeHTML(badge)}</div>`:''}
     <div class="tile-body">
       <div class="tile-title">${escapeHTML(title)}</div>
       ${sub?`<div class="tile-sub">${escapeHTML(sub)}</div>`:''}
-      ${epg?`<div class="tile-epg">📺 ${escapeHTML(epg)}</div>`:''}
     </div>
   </div>`;
 }
 
-/* ===================== HOME ===================== */
+/* ACCUEIL AVEC TV + HISTORIQUE */
 function renderHome(){
-  if(!guideData && !guideLoading && !guideError) loadGuideData();
-
-  const recent = state.history;
-  const lastWatched = recent[0];
-
-  // Extraction de quelques programmes TV en direct pour l'accueil
-  let liveTvNow = [];
-  if (guideData && guideData.channels) {
-    const now = new Date();
-    liveTvNow = guideData.channels.map(ch => {
-      const progs = guideData.programmes.get(ch.id) || [];
-      const current = progs.find(p => p.start <= now && p.stop > now);
-      const iptvMatch = findIptvMatchForEpg(ch.name, ch.id);
-      if (current && iptvMatch) {
-        return { channel: ch.name, title: current.title, match: iptvMatch };
-      }
-      return null;
-    }).filter(Boolean).slice(0, 10);
-  }
+  const history = state.history;
+  const stalkerChans = state.stalker.channels || [];
 
   viewEl.innerHTML = `
-    <div class="hero hero-netflix">
+    <div class="hero">
       <div>
-        <div class="tag">Vos médias en français</div>
-        <h1>StreamHub TV</h1>
-        <p>Toutes vos chaînes TV, films et séries VOD réunis en un seul endroit.</p>
-        <div class="hero-actions">
-          ${lastWatched ? `<button class="hero-btn hero-btn-primary" id="heroPlay">▶ Reprendre</button>` : ''}
-          <button class="hero-btn hero-btn-secondary" id="heroGuide">📺 Guide TV</button>
-        </div>
+        <h1 style="font-size:28px;">StreamHub TV</h1>
+        <p style="color:var(--muted);margin-top:6px;">Vos chaînes TV et VOD en direct</p>
       </div>
     </div>
 
-    <!-- NOUVELLE SECTION : TV EN DIRECT SUR L'ACCUEIL -->
     <div class="row">
-      <div class="row-title">
-        <span> En ce moment à la TV</span>
-        <button class="btn secondary" style="padding:4px 10px;font-size:11px;" id="homeSeeAllEpg">Tout le guide</button>
-      </div>
+      <div class="row-title"> En ce moment à la TV</div>
       <div class="tiles">
-        ${liveTvNow.length ? liveTvNow.map(item => tileHTML({
-            title: item.title,
-            sub: item.channel,
-            badge: 'DIRECT',
-            onclickAttr: `data-play-guide="${encodeURIComponent(JSON.stringify(item.match))}"`
-          })).join('') : `<div class="empty">${guideLoading ? 'Chargement des programmes...' : 'Aucun programme TV détecté ou EPG non chargé.'}</div>`
-        }
+        ${stalkerChans.slice(0, 10).map(c=>tileHTML({
+          title: c.name, sub: 'Stalker TV', badge: 'DIRECT', onclickAttr: `data-play-st="${c.name}"`
+        })).join('') || '<div class="empty">Connectez votre abonnement dans Réglages.</div>'}
       </div>
     </div>
 
     <div class="row">
       <div class="row-title">Récemment regardés</div>
       <div class="tiles">
-        ${recent.length? recent.map(r=>tileHTML({title:r.title, sub:r.source, badge:r.source, onclickAttr:`data-play='${encodeURIComponent(JSON.stringify(r))}'`})).join(''): '<div class="empty">Aucun historique.</div>'}
+        ${history.length ? history.map(r=>tileHTML({
+          title:r.title, sub:r.source, badge:r.source, onclickAttr:`data-play='${encodeURIComponent(JSON.stringify(r))}'`
+        })).join('') : '<div class="empty">Aucun historique de lecture.</div>'}
       </div>
     </div>`;
 
-  viewEl.querySelectorAll('[data-play]').forEach(t=>t.addEventListener('click',()=>{
-    playItem(JSON.parse(decodeURIComponent(t.dataset.play)));
-  }));
-
-  viewEl.querySelectorAll('[data-play-guide]').forEach(t=>{
-    t.addEventListener('click', async ()=>{
-      const match = JSON.parse(decodeURIComponent(t.dataset.playGuide));
-      playItem(match);
-    });
+  viewEl.querySelectorAll('[data-play]').forEach(t=>{
+    t.addEventListener('click', ()=> playItem(JSON.parse(decodeURIComponent(t.dataset.play))));
   });
-
-  document.getElementById('heroPlay')?.addEventListener('click', ()=> playItem(lastWatched));
-  document.getElementById('heroGuide')?.addEventListener('click', ()=> switchView('guide'));
-  document.getElementById('homeSeeAllEpg')?.addEventListener('click', ()=> switchView('guide'));
 }
 
-/* ===================== GUIDE TV (EPG) ===================== */
-let guideData = null; 
-let guideLoading = false;
-let guideError = null;
-
-function parseXmltvDate(str){
-  const m = str.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-]\d{4})?$/);
-  if(!m) return null;
-  const [, y, mo, d, h, mi, s, tz] = m;
-  let iso = `${y}-${mo}-${d}T${h}:${mi}:${s}`;
-  if(tz) iso += tz.slice(0,3)+':'+tz.slice(3);
-  else iso += 'Z';
-  return new Date(iso);
-}
-
-function cleanChannelName(str){
-  return (str || '').toLowerCase()
-    .replace(/fhd|hd|sd|4k|1080p|fr|france|\|\s*fr/gi, '')
-    .replace(/[^a-z0-9]/g, '')
-    .trim();
-}
-
-async function fetchGuideText(url){
-  const isGzip = /\.gz(\?|$)/i.test(url);
-  const isZip = /\.zip(\?|$)/i.test(url);
-  async function tryFetch(targetUrl){
-    const res = await fetch(targetUrl);
-    if(!res.ok) throw new Error(`Code erreur ${res.status}`);
-    if(isZip){
-      const buf = await res.arrayBuffer();
-      const zip = await JSZip.loadAsync(buf);
-      const xmlFile = Object.values(zip.files).find(f => !f.dir && /\.xml$/i.test(f.name));
-      return xmlFile.async('string');
-    }
-    if(isGzip){
-      const buf = await res.arrayBuffer();
-      return pako.ungzip(new Uint8Array(buf), {to:'string'});
-    }
-    return res.text();
-  }
-  try{ return await tryFetch(url); }
-  catch(networkErr){
-    const proxy = (state.proxy||'').trim();
-    if(!proxy) throw networkErr;
-    const proxied = proxy.endsWith('=')||proxy.endsWith('/') ? proxy+encodeURIComponent(url) : (()=>{ const p=new URL(proxy); p.searchParams.set('url', url); return p.toString(); })();
-    return await tryFetch(proxied);
-  }
-}
-
-async function loadGuideData(){
-  if(guideLoading) return;
-  guideLoading = true; guideError = null;
-  try{
-    const url = state.epgUrl;
-    if(!url) throw new Error('Aucune URL EPG.');
-    const text = await fetchGuideText(url);
-    const doc = new DOMParser().parseFromString(text, 'text/xml');
-    
-    const channels = Array.from(doc.querySelectorAll('channel')).map(ch=>({
-      id: ch.getAttribute('id'),
-      name: ch.querySelector('display-name')?.textContent || ch.getAttribute('id'),
-      cleanName: cleanChannelName(ch.querySelector('display-name')?.textContent || ch.getAttribute('id'))
-    }));
-
-    const programmes = new Map();
-    const now = new Date();
-    Array.from(doc.querySelectorAll('programme')).forEach(p=>{
-      const chId = p.getAttribute('channel');
-      const start = parseXmltvDate(p.getAttribute('start'));
-      const stop = parseXmltvDate(p.getAttribute('stop'));
-      if(!start || !stop) return;
-      if(stop < now || start > new Date(now.getTime()+24*3600*1000)) return;
-      if(!programmes.has(chId)) programmes.set(chId, []);
-      programmes.get(chId).push({ start, stop, title: p.querySelector('title')?.textContent || 'Sans titre' });
-    });
-
-    guideData = { channels, programmes };
-  }catch(e){ guideError = e.message; }
-  guideLoading = false;
-  if(state.view === 'guide' || state.view === 'home') render();
-}
-
-function getCurrentEpgForChannel(channelName, tvgId){
-  if(!guideData) return null;
-  const now = new Date();
-  const targetClean = cleanChannelName(channelName);
-  const matchedCh = guideData.channels.find(c => (tvgId && c.id === tvgId) || (c.cleanName && c.cleanName === targetClean));
-  if(!matchedCh) return null;
-  const progs = guideData.programmes.get(matchedCh.id) || [];
-  return progs.find(p => p.start <= now && p.stop > now);
-}
-
-function findIptvMatchForEpg(epgChannelName, epgId){
-  const targetClean = cleanChannelName(epgChannelName);
-  let m3uCh = (state.m3u.channels || []).find(c => (c.tvgId && c.tvgId === epgId) || cleanChannelName(c.name) === targetClean);
-  if(m3uCh) return { title: m3uCh.name, source: 'M3U', type: 'hls', url: m3uCh.url };
-
-  let xtCh = (state.xtream.streams || []).find(c => cleanChannelName(c.name) === targetClean);
-  if(xtCh){
-    const url = `${state.xtream.server}/live/${state.xtream.username}/${state.xtream.password}/${xtCh.id}.m3u8`;
-    return { title: xtCh.name, source: 'Xtream', type: 'hls', url };
-  }
-  return null;
-}
-
-function fmtTime(d){ return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
-
-function renderGuide(){
+/* YOUTUBE INTÉGRÉ PAR RECHERCHE/TENDANCES */
+function renderYoutube(){
   viewEl.innerHTML = `
-    <div class="hero" style="height:160px;">
-      <div>
-        <div class="tag">Programme TV</div>
-        <h1>Guide des chaînes</h1>
+    <div class="panel">
+      <h3>🔍 Rechercher sur YouTube</h3>
+      <div style="display:flex;gap:10px;">
+        <input id="ytQuery" placeholder="Entrez un sujet ou une vidéo...">
+        <button class="btn" id="ytSearchBtn">Chercher</button>
       </div>
     </div>
-    ${guideLoading ? `<div class="empty">Chargement du guide TV...</div>` : ''}
-    ${guideData ? `
-      <div class="grid">
-        ${guideData.channels.filter(ch => guideData.programmes.has(ch.id)).map(ch=>{
-            const progs = guideData.programmes.get(ch.id);
-            const now = new Date();
-            const current = progs.find(p=>p.start<=now && p.stop>now);
-            const iptvMatch = findIptvMatchForEpg(ch.name, ch.id);
-            if(!current) return '';
-            return `
-              <div class="tile" tabindex="0" ${iptvMatch ? `data-play-guide="${encodeURIComponent(JSON.stringify(iptvMatch))}"` : ''} style="height:auto;padding:14px;${iptvMatch?'cursor:pointer;':''}">
-                <div class="tile-title" style="color:var(--amber);margin-bottom:6px;">${escapeHTML(ch.name)}</div>
-                <div style="font-size:11px;color:var(--muted);">${fmtTime(current.start)} - ${fmtTime(current.stop)}</div>
-                <div style="font-size:13px;font-weight:600;margin-top:4px;">${escapeHTML(current.title)}</div>
-              </div>`;
-          }).join('')}
-      </div>` : ''}
-  `;
+    <div id="ytResults" class="grid"></div>`;
 
-  viewEl.querySelectorAll('[data-play-guide]').forEach(t=>{
-    t.addEventListener('click', ()=>{
-      playItem(JSON.parse(decodeURIComponent(t.dataset.playGuide)));
-    });
+  document.getElementById('ytSearchBtn')?.addEventListener('click', async ()=>{
+    const q = document.getElementById('ytQuery').value;
+    if(!q) return;
+    const resEl = document.getElementById('ytResults');
+    resEl.innerHTML = '<div class="empty">Recherche en cours...</div>';
+    
+    try {
+      const res = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}&filter=all`);
+      const data = await res.json();
+      const items = data.items.filter(i=>i.type==='stream');
+      resEl.innerHTML = items.map(item => tileHTML({
+        title: item.title,
+        sub: item.uploaderName,
+        thumb: item.thumbnail,
+        onclickAttr: `data-yt-id="${item.url.split('v=')[1]}" data-yt-title="${escapeHTML(item.title)}"`
+      })).join('');
+
+      resEl.querySelectorAll('[data-yt-id]').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.dataset.ytId;
+          const title = el.dataset.ytTitle;
+          playItem({ title, source: 'YouTube', url: `https://www.youtube.com/embed/${id}?autoplay=1` });
+        });
+      });
+    } catch(e) {
+      resEl.innerHTML = '<div class="empty">Erreur de chargement des vidéos.</div>';
+    }
   });
 }
 
-/* ===================== IPTV, VOD & SERIES (FRANÇAIS & CATEGORIES) ===================== */
+/* IPTV, VOD & SERIES */
 let iptvSub = 'live';
-let selectedVodCat = 'ALL';
-let selectedSeriesCat = 'ALL';
-
 function renderIptv(sub){
   iptvSub = sub || iptvSub;
   viewEl.innerHTML = `
     <div class="subtabs">
-      <div class="subtab ${iptvSub==='live'?'active':''}" data-sub="live">📺 Chaînes TV (FR)</div>
+      <div class="subtab ${iptvSub==='live'?'active':''}" data-sub="live">📺 Chaînes TV</div>
       <div class="subtab ${iptvSub==='vod'?'active':''}" data-sub="vod">🎬 Films (VOD)</div>
       <div class="subtab ${iptvSub==='series'?'active':''}" data-sub="series">🍿 Séries</div>
     </div>
-    <div id="iptvBody"></div>
-  `;
+    <div id="iptvBody"></div>`;
+
   viewEl.querySelectorAll('.subtab').forEach(s=>s.addEventListener('click',()=>renderIptv(s.dataset.sub)));
+
   const body = document.getElementById('iptvBody');
-  if(iptvSub==='live') body.innerHTML = livePanel(); 
-  if(iptvSub==='vod') body.innerHTML = vodPanel();
-  if(iptvSub==='series') body.innerHTML = seriesPanel();
-  bindIptvEvents();
-  attachFocusNav();
+  if(iptvSub==='live') {
+    const chans = (state.stalker.channels || []).concat(state.m3u.channels || []);
+    body.innerHTML = `<div class="grid">${chans.map(c=>tileHTML({title:c.name, sub:'Live', badge:'TV'})).join('') || '<div class="empty">Aucune chaîne trouvée.</div>'}</div>`;
+  } else if(iptvSub==='vod') {
+    const vods = state.xtream.vod || [];
+    body.innerHTML = `<div class="grid">${vods.map(v=>tileHTML({title:v.name, sub:'VOD', thumb:v.stream_icon})).join('') || '<div class="empty">Aucun film VOD chargé via Xtream.</div>'}</div>`;
+  } else {
+    const series = state.xtream.series || [];
+    body.innerHTML = `<div class="grid">${series.map(s=>tileHTML({title:s.name, sub:'Série', thumb:s.cover})).join('') || '<div class="empty">Aucune série chargée via Xtream.</div>'}</div>`;
+  }
 }
 
-function livePanel(){
-  // Filtre exclusif sur le contenu en Français
-  const chans = (state.m3u.channels || []).filter(c => isFrenchContent(c.name, c.group));
-  const xtChans = (state.xtream.streams || []).filter(s => isFrenchContent(s.name, s.category));
-  const stChans = (state.stalker.channels || []).filter(s => isFrenchContent(s.name));
-
-  return `
-    <div class="row">
-      <div class="row-title">Chaînes Francophones En Direct</div>
-      <div class="grid">
-        ${chans.map((c,i)=>tileHTML({title:c.name, sub:'M3U', badge:'M3U', thumb:c.logo, onclickAttr:`data-m3u-idx="${i}"`})).join('')}
-        ${xtChans.map((s,i)=>tileHTML({title:s.name, sub:'Xtream', badge:'Live', thumb:s.icon, onclickAttr:`data-xt-idx="${i}"`})).join('')}
-        ${stChans.map((c,i)=>tileHTML({title:c.name, sub:'Stalker', badge:'Live', onclickAttr:`data-st-idx="${i}"`})).join('')}
-        ${(!chans.length && !xtChans.length && !stChans.length) ? '<div class="empty">Aucune chaîne francophone trouvée. Configurez vos accès dans les Réglages.</div>' : ''}
-      </div>
-    </div>`;
-}
-
-function vodPanel(){
-  // Filtre VOD Français
-  const allVod = (state.xtream.vod || []).filter(v => isFrenchContent(v.name));
-  const cats = state.xtream.vodCats || [];
-
-  const filteredVod = selectedVodCat === 'ALL' 
-    ? allVod 
-    : allVod.filter(v => String(v.category_id) === String(selectedVodCat));
-
-  return `
-    <div class="cat-bar">
-      <div class="cat-chip ${selectedVodCat==='ALL'?'active':''}" data-vod-cat="ALL">Tous les films</div>
-      ${cats.map(c => `<div class="cat-chip ${selectedVodCat===String(c.category_id)?'active':''}" data-vod-cat="${c.category_id}">${escapeHTML(c.category_name)}</div>`).join('')}
-    </div>
-    <div class="row">
-      <div class="row-title">Films VOD (${filteredVod.length})</div>
-      <div class="grid">
-        ${filteredVod.map((v,i)=>tileHTML({
-          title: v.name, sub: 'Film', badge: 'VOD', thumb: v.stream_icon, onclickAttr: `data-vod-id="${v.stream_id}" data-vod-ext="${v.container_extension||'mp4'}" data-vod-title="${escapeHTML(v.name)}"`
-        })).join('')}
-        ${!filteredVod.length ? '<div class="empty">Aucun film dans cette catégorie.</div>' : ''}
-      </div>
-    </div>`;
-}
-
-function seriesPanel(){
-  // Filtre Séries Français
-  const allSeries = (state.xtream.series || []).filter(s => isFrenchContent(s.name));
-  const cats = state.xtream.seriesCats || [];
-
-  const filteredSeries = selectedSeriesCat === 'ALL' 
-    ? allSeries 
-    : allSeries.filter(s => String(s.category_id) === String(selectedSeriesCat));
-
-  return `
-    <div class="cat-bar">
-      <div class="cat-chip ${selectedSeriesCat==='ALL'?'active':''}" data-series-cat="ALL">Toutes les séries</div>
-      ${cats.map(c => `<div class="cat-chip ${selectedSeriesCat===String(c.category_id)?'active':''}" data-series-cat="${c.category_id}">${escapeHTML(c.category_name)}</div>`).join('')}
-    </div>
-    <div class="row">
-      <div class="row-title">Séries (${filteredSeries.length})</div>
-      <div class="grid">
-        ${filteredSeries.map((s,i)=>tileHTML({
-          title: s.name, sub: 'Série', badge: 'Série', thumb: s.cover, onclickAttr: `data-series-id="${s.series_id}"`
-        })).join('')}
-        ${!filteredSeries.length ? '<div class="empty">Aucune série dans cette catégorie.</div>' : ''}
-      </div>
-    </div>`;
-}
-
-function bindIptvEvents(){
-  // Filtres Catégories
-  viewEl.querySelectorAll('[data-vod-cat]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      selectedVodCat = chip.dataset.vodCat;
-      renderIptv('vod');
-    });
-  });
-
-  viewEl.querySelectorAll('[data-series-cat]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      selectedSeriesCat = chip.dataset.seriesCat;
-      renderIptv('series');
-    });
-  });
-
-  // Events VOD Direct Launch
-  viewEl.querySelectorAll('[data-vod-id]').forEach(t => {
-    t.addEventListener('click', () => {
-      const id = t.dataset.vodId;
-      const ext = t.dataset.vodExt;
-      const title = t.dataset.vodTitle;
-      const url = `${state.xtream.server}/movie/${state.xtream.username}/${state.xtream.password}/${id}.${ext}`;
-      playItem({ title, source: 'VOD', type: 'video', url });
-    });
-  });
-}
-
-/* ===================== REGLAGES (RANGÉS ET CLAIRS) ===================== */
+/* CONFIGURATION PROPRE ET CLAIRE */
 function renderSources(){
-  const x = state.xtream;
-  const st = state.stalker;
-
   viewEl.innerHTML = `
-    <div class="settings-grid">
-      
-      <!-- XTREAM CODES -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
       <div class="panel">
-        <h3> Configuration Xtream Codes</h3>
-        <div class="field"><label>Serveur (URL)</label><input id="xServer" value="${escapeHTML(x.server||'')}"></div>
-        <div class="field"><label>Identifiant</label><input id="xUser" value="${escapeHTML(x.username||'')}"></div>
-        <div class="field"><label>Mot de passe</label><input id="xPass" type="password" value="${escapeHTML(x.password||'')}"></div>
+        <h3> Configuration Xtream</h3>
+        <div class="field"><label>Serveur</label><input id="xServer" value="${escapeHTML(state.xtream.server||'')}"></div>
+        <div class="field"><label>Identifiant</label><input id="xUser" value="${escapeHTML(state.xtream.username||'')}"></div>
+        <div class="field"><label>Mot de passe</label><input id="xPass" type="password" value="${escapeHTML(state.xtream.password||'')}"></div>
         <button class="btn" id="xConnect">Synchroniser Xtream</button>
-        <div class="note" id="xStatus" style="display:none;"></div>
       </div>
 
-      <!-- PLAYLIST M3U -->
       <div class="panel">
         <h3> Playlist M3U</h3>
-        <div class="field"><label>URL de la playlist M3U</label><input id="m3uUrl" value="${escapeHTML(state.m3u.url||'')}"></div>
-        <button class="btn" id="m3uLoadUrl">Charger la playlist</button>
+        <div class="field"><label>URL Playlist</label><input id="m3uUrl" value="${escapeHTML(state.m3u.url||'')}"></div>
+        <button class="btn" id="m3uLoad">Charger M3U</button>
       </div>
-
-      <!-- STALKER PORTAL -->
-      <div class="panel">
-        <h3> Portail Stalker</h3>
-        <div class="field"><label>URL Portail</label><input id="stPortal" value="${escapeHTML(st.portal||'')}"></div>
-        <div class="field"><label>Adresse MAC</label><input id="stMac" value="${escapeHTML(st.mac||'')}"></div>
-        <button class="btn" id="stConnect">Connexion Stalker</button>
-        <div class="note" id="stStatus" style="display:none;"></div>
-      </div>
-
-      <!-- EPG ET PROXY -->
-      <div class="panel">
-        <h3> Guide TV & Réseau</h3>
-        <div class="field"><label>URL EPG (XMLTV)</label><input id="epgUrlInput" value="${escapeHTML(state.epgUrl||'')}"></div>
-        <div class="field"><label>URL Proxy CORS</label><input id="proxyInput" value="${escapeHTML(state.proxy||'')}"></div>
-        <button class="btn" id="saveNet">Enregistrer Réseau & EPG</button>
-      </div>
-
     </div>
-
-    <div style="margin-top:20px; text-align:right;">
-      <button class="btn danger" id="resetAll">Réinitialiser l'application</button>
+    
+    <div style="margin-top:20px;text-align:right;">
+      <button class="btn danger" onclick="localStorage.clear();location.reload();">Réinitialiser l'application</button>
     </div>`;
-
-  // Handlers Réglages
-  document.getElementById('xConnect')?.addEventListener('click', syncXtream);
-  document.getElementById('m3uLoadUrl')?.addEventListener('click', syncM3u);
-  document.getElementById('saveNet')?.addEventListener('click', () => {
-    state.epgUrl = document.getElementById('epgUrlInput').value.trim();
-    state.proxy = document.getElementById('proxyInput').value.trim();
-    save();
-    loadGuideData();
-    alert('Réglages enregistrés !');
-  });
-  document.getElementById('resetAll')?.addEventListener('click', () => {
-    if(confirm('Réinitialiser toutes les données ?')){ localStorage.clear(); location.reload(); }
-  });
-}
-
-async function syncXtream(){
-  const server = document.getElementById('xServer').value.replace(/\/$/,'');
-  const username = document.getElementById('xUser').value;
-  const password = document.getElementById('xPass').value;
-  const statusEl = document.getElementById('xStatus');
-  statusEl.style.display='block'; statusEl.textContent = 'Connexion et chargement du contenu...';
-
-  try {
-    // Streams
-    const liveRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`);
-    const liveData = await liveRes.json();
-
-    // VOD & Catégories VOD
-    const vodRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_streams`);
-    const vodData = await vodRes.json();
-    const vodCatRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_categories`);
-    const vodCats = await vodCatRes.json();
-
-    // Séries & Catégories Séries
-    const seriesRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series`);
-    const seriesData = await seriesRes.json();
-    const seriesCatRes = await proxied(`${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series_categories`);
-    const seriesCats = await seriesCatRes.json();
-
-    state.xtream = {
-      server, username, password,
-      streams: Array.isArray(liveData)?liveData:[],
-      vod: Array.isArray(vodData)?vodData:[],
-      vodCats: Array.isArray(vodCats)?vodCats:[],
-      series: Array.isArray(seriesData)?seriesData:[],
-      seriesCats: Array.isArray(seriesCats)?seriesCats:[]
-    };
-    save();
-    statusEl.textContent = 'Synchronisation Xtream réussie !';
-  } catch(e) {
-    statusEl.textContent = 'Erreur Xtream : ' + e.message;
-  }
-}
-
-async function syncM3u(){
-  const url = document.getElementById('m3uUrl').value;
-  try{
-    const res = await fetch(url);
-    const text = await res.text();
-    state.m3u = {url, raw:text, channels: parseM3U(text)};
-    save(); alert('M3U chargé !');
-  }catch(e){ alert('Erreur M3U : '+e.message); }
-}
-
-function parseM3U(text){
-  const lines = text.split(/\r?\n/);
-  const channels = [];
-  let cur = null;
-  for(const line of lines){
-    if(line.startsWith('#EXTINF')){
-      const nameMatch = line.split(',').pop();
-      const logo = (line.match(/tvg-logo="([^"]+)"/)||[])[1];
-      const tvgId = (line.match(/tvg-id="([^"]+)"/)||[])[1];
-      const group = (line.match(/group-title="([^"]+)"/)||[])[1];
-      cur = { name: nameMatch?.trim() || 'Chaîne', logo, group, tvgId };
-    } else if(line && !line.startsWith('#')){
-      if(cur){ cur.url = line.trim(); channels.push(cur); cur=null; }
-    }
-  }
-  return channels;
-}
-
-function proxied(url){
-  const proxy = (state.proxy || '').trim();
-  if(!proxy) return fetch(url);
-  if(proxy.endsWith('=') || proxy.endsWith('/')) return fetch(proxy + encodeURIComponent(url));
-  const p = new URL(proxy);
-  p.searchParams.set('url', url);
-  return fetch(p.toString());
-}
-
-/* ===================== OTHER VIEWS ===================== */
-function renderYoutube(){ viewEl.innerHTML = `<div class="hero"><h1>YouTube</h1></div>`; }
-function renderMolotov(){ viewEl.innerHTML = `<div class="hero"><h1>Molotov TV</h1></div>`; }
-
-/* ===================== PLAYER ===================== */
-let hlsInstance = null;
-function openVideoPlayer(title, url, sub){
-  if(!url) return;
-  state.view = 'player';
-  renderPlayer(title, url, sub);
-}
-
-function renderPlayer(title, url, sub){
-  viewEl.innerHTML = `
-    <div class="player-page">
-      <div class="player-info">
-        <button class="player-back" id="playerBack">← Retour</button>
-        <h2>${escapeHTML(title)}</h2>
-      </div>
-      <div class="player-stage">
-        <video id="mainVideo" controls autoplay></video>
-      </div>
-    </div>`;
-  
-  document.getElementById('playerBack').onclick = () => switchView('home');
-  const video = document.getElementById('mainVideo');
-  if(Hls.isSupported()){
-    hlsInstance = new Hls();
-    hlsInstance.loadSource(url);
-    hlsInstance.attachMedia(video);
-  } else { video.src = url; }
 }
 
 function playItem(item){
   if(!item) return;
-  openVideoPlayer(item.title, item.url, item.source);
   pushHistory(item);
+  state.view = 'player';
+  viewEl.innerHTML = `
+    <div class="player-page">
+      <div style="display:flex;align-items:center;padding:12px 0;">
+        <button class="player-back" onclick="switchView('home')">← Retour</button>
+        <h2>${escapeHTML(item.title)}</h2>
+      </div>
+      <div class="player-stage">
+        ${item.url.includes('youtube.com') 
+          ? `<iframe src="${item.url}" style="width:100%;height:100%;border:none;" allow="autoplay"></iframe>`
+          : `<video id="videoPlayer" controls autoplay></video>`
+        }
+      </div>
+    </div>`;
+
+  if(!item.url.includes('youtube.com')){
+    const video = document.getElementById('videoPlayer');
+    if(Hls.isSupported()){
+      const hls = new Hls();
+      hls.loadSource(item.url);
+      hls.attachMedia(video);
+    } else { video.src = item.url; }
+  }
 }
 
-/* ===================== NAVIGATION D-PAD ===================== */
-function attachFocusNav(){
-  document.querySelectorAll('.tile, .btn, .subtab, .cat-chip, input').forEach(el=>{
-    el.addEventListener('mouseenter', ()=> setFocus(el));
-  });
-}
-function setFocus(el){
-  document.querySelectorAll('.focused').forEach(f=>f.classList.remove('focused'));
-  el.classList.add('focused');
-}
+function renderGuide(){ viewEl.innerHTML = `<div class="empty">Guide TV chargé dans l'onglet principal.</div>`; }
 
-/* ===================== INIT ===================== */
 render();
-loadGuideData();
 </script>
 </body>
 </html>
