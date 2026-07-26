@@ -6,17 +6,18 @@
 <title>StreamHub</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
-  --bg:#0A0A0A;
-  --surface:#141414;
-  --surface2:#232323;
-  --amber:#E50914;
+  --bg:#0A1628;
+  --surface:#0F1F38;
+  --surface2:#16294A;
+  --amber:#00AEEF;
   --teal:#F5F5F1;
   --text:#F5F5F1;
-  --muted:#8C8C8C;
+  --muted:#8FA3C2;
   --danger:#FF6161;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -33,16 +34,14 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 /* ===== Layout ===== */
 .app{display:flex;height:100vh;width:100vw;}
 .sidebar{
-  width:84px;
-  background:linear-gradient(180deg,#0D1218,#0A0E14);
+  width:220px;
+  background:linear-gradient(180deg,#0C1930,#0A1628);
   border-right:1px solid rgba(255,255,255,0.06);
-  display:flex;flex-direction:column;align-items:center;
+  display:flex;flex-direction:column;align-items:stretch;
   padding:22px 0;
   flex-shrink:0;
-  transition:width .25s ease;
   z-index:20;
 }
-.sidebar:hover{width:210px;}
 .brand{
   color:var(--amber);
   font-weight:700;
@@ -52,9 +51,9 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   white-space:nowrap;
   overflow:hidden;
   width:100%;
-  text-align:center;
+  text-align:left;
+  padding-left:22px;
 }
-.sidebar:hover .brand{text-align:left;padding-left:22px;}
 .nav-item{
   width:100%;
   display:flex;align-items:center;gap:14px;
@@ -66,12 +65,29 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   overflow:hidden;
 }
 .nav-item svg{flex-shrink:0;width:22px;height:22px;}
-.nav-label{opacity:0;transition:opacity .15s;font-size:14px;font-weight:600;}
-.sidebar:hover .nav-label{opacity:1;}
-.nav-item.active{color:var(--amber);background:rgba(229,9,20,0.12);}
+.nav-label{opacity:1;font-size:14px;font-weight:600;}
+.nav-item.active{color:var(--amber);background:rgba(0,174,239,0.12);}
 .nav-item.active::before{
   content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber);
 }
+.nav-group-label{
+  font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:#4A6488;padding:18px 0 8px 28px;
+}
+.nav-group-label:first-of-type{padding-top:4px;}
+.sidebar-spacer{flex:1;}
+.sidebar-mini-preview{
+  margin:0 16px 18px;padding:10px;border-radius:10px;background:var(--surface2);
+  display:flex;align-items:center;gap:10px;cursor:pointer;border:1px solid rgba(255,255,255,.06);
+}
+.sidebar-mini-preview:hover{background:#1c355c;}
+.mini-preview-thumb{
+  width:46px;height:46px;border-radius:6px;background-size:cover;background-position:center;
+  background-color:#0A1628;flex-shrink:0;
+}
+.mini-preview-info{overflow:hidden;}
+.mini-preview-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.mini-preview-title{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .nav-item:focus-visible, .tile:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible{
   outline:2px solid var(--teal);outline-offset:2px;
 }
@@ -113,7 +129,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   transform:scale(1.06);
   z-index:2;
   border-color:var(--amber);
-  box-shadow:0 0 0 3px rgba(229,9,20,.35), 0 10px 24px rgba(0,0,0,.5);
+  box-shadow:0 0 0 3px rgba(0,174,239,.35), 0 10px 24px rgba(0,0,0,.5);
 }
 .tile.focused::after{
   content:'';position:absolute;inset:-6px;border-radius:14px;
@@ -151,7 +167,7 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
   height:340px;
   background:
     linear-gradient(180deg, rgba(10,10,10,0) 40%, rgba(10,10,10,1) 100%),
-    radial-gradient(circle at 15% 25%, rgba(229,9,20,.35), transparent 55%),
+    radial-gradient(circle at 15% 25%, rgba(0,174,239,.35), transparent 55%),
     linear-gradient(135deg, #1a1a1a, #0A0A0A 70%);
   border:none;
 }
@@ -237,9 +253,21 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 <div class="app">
   <nav class="sidebar" id="sidebar">
     <div class="brand">📺 StreamHub</div>
+
+    <div class="nav-group-label">Accueil</div>
     <div class="nav-item active" data-view="home" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
-      <span class="nav-label">Accueil</span>
+      <span class="nav-label">À la une</span>
+    </div>
+    <div class="nav-item" data-view="guide" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/><path d="M7 13h3M7 16h6"/></svg>
+      <span class="nav-label">Guide TV</span>
+    </div>
+
+    <div class="nav-group-label">Contenus</div>
+    <div class="nav-item" data-view="iptv" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+      <span class="nav-label">IPTV & VOD</span>
     </div>
     <div class="nav-item" data-view="youtube" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
@@ -249,14 +277,18 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l16-3v13"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="17" r="2"/></svg>
       <span class="nav-label">Molotov TV</span>
     </div>
-    <div class="nav-item" data-view="iptv" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
-      <span class="nav-label">IPTV</span>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-mini-preview" id="sidebarMiniPreview" style="display:none;">
+      <div class="mini-preview-thumb" id="miniPreviewThumb"></div>
+      <div class="mini-preview-info">
+        <div class="mini-preview-label">Reprendre</div>
+        <div class="mini-preview-title" id="miniPreviewTitle"></div>
+      </div>
     </div>
-    <div class="nav-item" data-view="guide" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/><path d="M7 13h3M7 16h6"/></svg>
-      <span class="nav-label">Guide TV</span>
-    </div>
+
+    <div class="nav-group-label">Réglages</div>
     <div class="nav-item" data-view="sources" tabindex="0">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
       <span class="nav-label">Sources</span>
@@ -292,7 +324,7 @@ let state = {
   proxy: DB.get('proxy', 'https://STREAMHUB--5494c6567b9011f18e851607ee4eb77e.web.val.run'),
   googleClientId: DB.get('googleClientId', '654265541879-4f8mb6u2m507aiju0iu87r9dh5p8s8dr.apps.googleusercontent.com'),
   youtubeApiKey: DB.get('youtubeApiKey', 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik'),
-  epgUrl: DB.get('epgUrl', 'https://epgshare01.online/epgshare01/epg_ripper_FR1.xml.gz'),
+  epgUrl: DB.get('epgUrl', 'https://xmltvfr.fr/xmltv/xmltv_fr.xml.gz'),
   subscriptions: [],
   view: 'home',
 };
@@ -312,6 +344,7 @@ function pushHistory(item){
   state.history.unshift({...item, ts:Date.now()});
   state.history = state.history.slice(0,20);
   save();
+  if(typeof updateMiniPreview === 'function') updateMiniPreview();
 }
 
 // Force les valeurs par défaut si elles sont vides (ex: ancienne sauvegarde vide en localStorage)
@@ -319,8 +352,8 @@ if(!state.proxy) state.proxy = 'https://streamhub-proxy.onrender.com';
 if(!state.youtubeApiKey) state.youtubeApiKey = 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik';
 // L'ancienne URL EPG par défaut (iptv-org) renvoyait une 404 — on la remplace
 // automatiquement par la nouvelle source confirmée fonctionnelle.
-if(!state.epgUrl || state.epgUrl.includes('iptv-org/epg/gh-pages')){
-  state.epgUrl = 'https://epgshare01.online/epgshare01/epg_ripper_FR1.xml.gz';
+if(!state.epgUrl || state.epgUrl.includes('iptv-org/epg/gh-pages') || state.epgUrl.includes('epgshare01.online') || state.epgUrl.includes('xmltv_tnt.zip')){
+  state.epgUrl = 'https://xmltvfr.fr/xmltv/xmltv_fr.xml.gz';
 }
 save();
 
@@ -346,6 +379,18 @@ setInterval(tickClock,1000); tickClock();
 
 /* ===================== RENDER ROUTER ===================== */
 const viewEl = document.getElementById('view');
+function updateMiniPreview(){
+  const box = document.getElementById('sidebarMiniPreview');
+  if(!box) return;
+  const last = state.history[0];
+  if(!last){ box.style.display = 'none'; return; }
+  box.style.display = 'flex';
+  document.getElementById('miniPreviewTitle').textContent = last.title;
+  const thumb = document.getElementById('miniPreviewThumb');
+  thumb.style.backgroundImage = last.id ? `url('https://img.youtube.com/vi/${last.id}/default.jpg')` : '';
+  box.onclick = () => playItem(last);
+}
+
 function render(){
   if(state.view==='home') renderHome();
   else if(state.view==='youtube') renderYoutube();
@@ -354,6 +399,7 @@ function render(){
   else if(state.view==='guide') renderGuide();
   else if(state.view==='sources') renderSources();
   attachFocusNav();
+  updateMiniPreview();
 }
 
 function tileHTML({title, sub, badge, thumb, onclickAttr}){
@@ -672,9 +718,17 @@ function parseXmltvDate(str){
 
 async function fetchGuideText(url){
   const isGzip = /\.gz(\?|$)/i.test(url);
+  const isZip = /\.zip(\?|$)/i.test(url);
   async function tryFetch(targetUrl){
     const res = await fetch(targetUrl);
     if(!res.ok) throw new Error(`Le serveur a répondu avec le statut ${res.status}.`);
+    if(isZip){
+      const buf = await res.arrayBuffer();
+      const zip = await JSZip.loadAsync(buf);
+      const xmlFile = Object.values(zip.files).find(f => !f.dir && /\.xml$/i.test(f.name));
+      if(!xmlFile) throw new Error('Aucun fichier .xml trouvé dans l\'archive .zip.');
+      return xmlFile.async('string');
+    }
     if(isGzip){
       const buf = await res.arrayBuffer();
       return pako.ungzip(new Uint8Array(buf), {to:'string'});
@@ -822,7 +876,19 @@ function renderMolotov(){
 
 /* ===================== IPTV (M3U / Xtream / Stalker) ===================== */
 let iptvSub = 'm3u';
+let proxyWarmed = false;
+function pingProxyWakeup(){
+  const proxy = (state.proxy||'').trim();
+  if(!proxy || proxyWarmed) return;
+  proxyWarmed = true;
+  // Requête silencieuse en arrière-plan pour "réveiller" un service gratuit
+  // (Render, etc.) qui se met en veille après une période d'inactivité —
+  // évite l'échec de la toute première vraie requête de l'utilisateur.
+  fetch(proxy).catch(()=>{});
+}
+
 function renderIptv(sub){
+  pingProxyWakeup();
   iptvSub = sub || iptvSub;
   viewEl.innerHTML = `
     <div class="subtabs">
@@ -1753,6 +1819,7 @@ document.getElementById('globalSearch').addEventListener('input', e=>{
 });
 
 /* ===================== INIT ===================== */
+pingProxyWakeup();
 render();
 </script>
 </body>
