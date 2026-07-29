@@ -234,6 +234,53 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 }
 .search-bar input{background:transparent;border:none;color:var(--text);font-size:13px;width:100%;outline:none;}
 
+/* ===== Écran de choix du type d'appareil ===== */
+.screen-picker-overlay{
+  position:fixed;inset:0;background:var(--bg);z-index:200;
+  display:none;align-items:center;justify-content:center;text-align:center;padding:24px;
+}
+.screen-picker-overlay.open{display:flex;}
+.screen-picker-box{max-width:640px;}
+.screen-picker-options{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;}
+.screen-picker-option{
+  background:var(--surface2);border:2px solid transparent;border-radius:14px;
+  padding:28px 24px;width:160px;cursor:pointer;transition:transform .15s ease;
+}
+.screen-picker-option:hover, .screen-picker-option:focus, .screen-picker-option.focused{
+  border-color:var(--amber);transform:scale(1.05);outline:none;
+}
+.screen-picker-icon{font-size:40px;margin-bottom:12px;}
+.screen-picker-label{font-weight:700;font-size:16px;margin-bottom:4px;}
+.screen-picker-sub{font-size:12px;color:var(--muted);}
+
+/* ===== Profil TV : plus grand, plus lisible à distance ===== */
+body.screen-tv{font-size:17px;}
+body.screen-tv .sidebar{width:260px;}
+body.screen-tv .nav-item{padding:18px 0 18px 28px;}
+body.screen-tv .nav-label{font-size:16px;}
+body.screen-tv .tile{flex:0 0 240px;height:140px;}
+body.screen-tv .grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
+body.screen-tv .hero{height:320px;}
+body.screen-tv .hero h1{font-size:36px;}
+
+/* ===== Profil Smartphone : plus compact, navigation repliée ===== */
+body.screen-phone .sidebar{width:64px;}
+body.screen-phone .nav-label{display:none;}
+body.screen-phone .brand{font-size:0;padding-left:0;text-align:center;}
+body.screen-phone .brand::before{content:'📺';font-size:22px;}
+body.screen-phone .nav-group-label{display:none;}
+body.screen-phone .topbar{padding:0 14px;}
+body.screen-phone .search-bar{width:150px;}
+body.screen-phone .view{padding:8px 14px 30px;}
+body.screen-phone .hero{height:190px;padding:18px;}
+body.screen-phone .hero h1{font-size:22px;}
+body.screen-phone .hero p{font-size:12px;}
+body.screen-phone .tile{flex:0 0 150px;height:95px;}
+body.screen-phone .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+body.screen-phone .mini-preview-label, body.screen-phone .mini-preview-title{font-size:10px;}
+body.screen-phone .sidebar-mini-preview{margin:0 8px 12px;padding:6px;}
+body.screen-phone .mini-preview-thumb{width:32px;height:32px;}
+
 /* ===== Lecteur intégré (plein écran dans la zone de contenu) ===== */
 .player-page{display:flex;flex-direction:column;height:100%;}
 .player-stage{
@@ -253,6 +300,31 @@ h1,h2,h3,.brand,.tile-title,.nav-label{
 </style>
 </head>
 <body>
+
+<div class="screen-picker-overlay" id="screenPickerOverlay">
+  <div class="screen-picker-box">
+    <div class="tag" style="margin-bottom:10px;">Bienvenue</div>
+    <h1 style="font-size:26px;margin-bottom:10px;">Sur quel écran regardes-tu ?</h1>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:28px;">L'affichage s'adapte automatiquement à ton choix. Modifiable à tout moment depuis Sources.</p>
+    <div class="screen-picker-options">
+      <div class="screen-picker-option" data-screen="tv" tabindex="0">
+        <div class="screen-picker-icon">📺</div>
+        <div class="screen-picker-label">TV</div>
+        <div class="screen-picker-sub">Grand écran, télécommande</div>
+      </div>
+      <div class="screen-picker-option" data-screen="tablet" tabindex="0">
+        <div class="screen-picker-icon">📱</div>
+        <div class="screen-picker-label">Tablette</div>
+        <div class="screen-picker-sub">Écran moyen, tactile</div>
+      </div>
+      <div class="screen-picker-option" data-screen="phone" tabindex="0">
+        <div class="screen-picker-icon">📲</div>
+        <div class="screen-picker-label">Smartphone</div>
+        <div class="screen-picker-sub">Petit écran, une main</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="app">
   <nav class="sidebar" id="sidebar">
@@ -337,6 +409,7 @@ let state = {
   googleClientId: DB.get('googleClientId', '654265541879-4f8mb6u2m507aiju0iu87r9dh5p8s8dr.apps.googleusercontent.com'),
   youtubeApiKey: DB.get('youtubeApiKey', 'AIzaSyCL9edDCtFY64GZH7sZVnmi4g7Cetoorik'),
   epgUrl: DB.get('epgUrl', 'https://xmltvfr.fr/xmltv/xmltv_fr.xml.gz'),
+  screenType: DB.get('screenType', null),
   subscriptions: [],
   view: 'home',
 };
@@ -351,6 +424,7 @@ function save(){
   DB.set('googleClientId', state.googleClientId);
   DB.set('youtubeApiKey', state.youtubeApiKey);
   DB.set('epgUrl', state.epgUrl);
+  DB.set('screenType', state.screenType);
 }
 function pushHistory(item){
   state.history.unshift({...item, ts:Date.now()});
@@ -1618,7 +1692,13 @@ function bindIptvEvents(){
 
 /* ===================== SOURCES / SETTINGS ===================== */
 function renderSources(){
+  const screenLabels = {tv:'📺 TV', tablet:'📱 Tablette', phone:'📲 Smartphone'};
   viewEl.innerHTML = `
+    <div class="panel">
+      <h3>Type d'écran</h3>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">Affichage actuel : <strong>${screenLabels[state.screenType]||'Non défini'}</strong></p>
+      <button class="btn secondary" id="changeScreenType">Changer de type d'écran</button>
+    </div>
     <div class="panel">
       <h3>Mes sources configurées</h3>
       <p style="font-size:13px;color:var(--muted);line-height:1.6;">StreamHub se connecte directement à vos propres accès — playlist M3U, identifiants Xtream Codes, portail Stalker — sans passer par une interface tierce. Toutes les informations restent stockées localement dans votre navigateur (localStorage), rien n'est envoyé à un serveur externe.</p>
@@ -1684,6 +1764,7 @@ function renderSources(){
     <div class="section-divider">⚠️ Zone dangereuse</div>
     <button class="btn danger" id="resetAll">Réinitialiser toutes les sources</button>
   `;
+  document.getElementById('changeScreenType').addEventListener('click', showScreenPicker);
   document.getElementById('saveEpgUrl').addEventListener('click',()=>{
     state.epgUrl = document.getElementById('epgUrlInput').value.trim();
     save();
@@ -1988,7 +2069,34 @@ document.getElementById('globalSearch').addEventListener('input', e=>{
   });
 });
 
+/* ===================== CHOIX DU TYPE D'ÉCRAN ===================== */
+function applyScreenType(type){
+  document.body.classList.remove('screen-tv','screen-tablet','screen-phone');
+  if(type) document.body.classList.add('screen-'+type);
+}
+function showScreenPicker(){
+  const overlay = document.getElementById('screenPickerOverlay');
+  overlay.classList.add('open');
+  overlay.querySelectorAll('.screen-picker-option').forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      state.screenType = opt.dataset.screen;
+      save();
+      applyScreenType(state.screenType);
+      overlay.classList.remove('open');
+    });
+    opt.addEventListener('keydown', e=>{ if(e.key==='Enter') opt.click(); });
+  });
+}
+function initScreenType(){
+  if(state.screenType){
+    applyScreenType(state.screenType);
+  } else {
+    showScreenPicker();
+  }
+}
+
 /* ===================== INIT ===================== */
+initScreenType();
 pingProxyWakeup();
 render();
 </script>
